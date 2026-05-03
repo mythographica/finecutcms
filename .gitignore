@@ -1,0 +1,12 @@
+node_modules/
+npm-debug.log
+.env
+todo.txt
+back.*
+coverage
+coveragejest
+.nyc_output
+.idea
+.npmrc
+.vscode
+.continue

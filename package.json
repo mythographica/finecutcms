@@ -1,0 +1,30 @@
+{
+	"name": "finecut-node",
+	"version": "1.0.0",
+	"description": "FineCut CMS — Node.js + Fastify + mnemonica rewrite",
+	"main": "build/core/server.js",
+	"type": "module",
+	"scripts": {
+		"start": "node build/core/server.js",
+		"dev": "node --watch build/core/server.js",
+		"build": "tsc",
+		"build:watch": "tsc --watch",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"cache:clear": "node bin/cache-clear.js"
+	},
+	"dependencies": {
+		"fastify": "^5.0.0",
+		"mnemonica": "file:../core",
+		"pino": "^9.0.0",
+		"pino-pretty": "^13.0.0"
+	},
+	"engines": {
+		"node": ">=20"
+	},
+	"devDependencies": {
+		"@types/node": "^25.6.0",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.5"
+	}
+}
