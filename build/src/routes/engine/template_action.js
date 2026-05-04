@@ -71,9 +71,28 @@ export default async function (app) {
             return reply.type('application/json').send({ error: 'Missing template name' });
         }
         const templatePath = path.join(ROOT, 'views', 'templates', template);
-        const engineRequest = new EngineRequest({
-            body: { action, template }
-        });
+        if (action === 'get') {
+            if (!await fileExists(templatePath)) {
+                return reply.type('application/json').send({ source: '', snippet: '', header: '' });
+            }
+            const data = await readTemplate(templatePath);
+            const engineRequest = new EngineRequest({
+                body: { action, template }
+            });
+            const templateResult = new engineRequest.TemplateResult(data);
+            return reply.type('application/json').send(templateResult.template);
+        }
+        if (action === 'getInfo') {
+            if (!await fileExists(templatePath)) {
+                return reply.type('application/json').send({ snippet: '', header: '' });
+            }
+            const { snippet: s, header: h } = await readTemplate(templatePath);
+            const engineRequest = new EngineRequest({
+                body: { action, template }
+            });
+            const templateResult = new engineRequest.TemplateResult({ snippet: s, header: h });
+            return reply.type('application/json').send(templateResult.template);
+        }
         if (action === 'add') {
             if (await fileExists(templatePath)) {
                 reply.code(409);
@@ -81,8 +100,7 @@ export default async function (app) {
             }
             await mkdirp(templatePath);
             await writeTemplate(templatePath, source, snippet, header);
-            const templateResult = new engineRequest.TemplateResult({ source, snippet, header });
-            return reply.type('application/json').send(templateResult.template);
+            return reply.type('application/json').send({ success: true });
         }
         if (action === 'save') {
             if (!await fileExists(templatePath)) {
@@ -90,12 +108,11 @@ export default async function (app) {
                 return reply.type('application/json').send({ error: 'Template not found' });
             }
             await writeTemplate(templatePath, source, snippet, header);
-            const templateResult = new engineRequest.TemplateResult({ source, snippet, header });
-            return reply.type('application/json').send(templateResult.template);
+            return reply.type('application/json').send({ success: true });
         }
         if (action === 'del') {
             const ok = await removeRecursive(templatePath);
-            return reply.type('application/json').send({ status: ok });
+            return reply.type('application/json').send({ success: ok });
         }
         reply.code(400);
         return reply.type('application/json').send({ error: 'Unknown action' });

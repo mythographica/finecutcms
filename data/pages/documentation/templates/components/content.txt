@@ -1,0 +1,25 @@
+<p>We are using <pre>/components/</pre></p>
+<p>for storing some regular code (menu, json decoder).<br /></p>
+<p>All that in there availiable as <pre>$success['components']</pre> inside of the template.</p>
+
+<p>Today we have:</p>
+
+<ul>
+
+<li>&laquo;<strong>content_parser</strong>&raquo; &mdash; for <a href="/documentation/installation/sub_folder_memo/">parsing links</a> inside of page content. </li>
+
+<li>&laquo;<strong>head_additional</strong>&raquo; &mdash; the same as &laquo;content_parser&raquo; but for page settings &laquo;header additional&raquo; data.</li>
+
+<li>&laquo;<strong>json_info</strong>&raquo; &mdash; shortcut for <em>$success['header']['info']</em> to <em>$info</em>. </li>
+
+<li>&laquo;<strong>menu_documents</strong>&raquo; &mdash; generates HTML UL &gt; LI list structure from folder, currently just a draft.</li>
+
+<li>&laquo;<strong>menu_left</strong>&raquo; &mdash; generates left side menu from <em>$success['header']['info']</em> JSON array.</li>
+
+<li>&laquo;<strong>menu_left_json</strong>&raquo; &mdash; generates left side menu from stored file.</li>
+
+<li>&laquo;<strong>menu_main</strong>&raquo; &mdash; generates page main menu from <em>$success['header']['info']</em> JSON array.</li>
+
+<li>&laquo;<strong>menu_main_json</strong>&raquo; &mdash; generates main menu from stored file.</li>
+
+</ul>

@@ -2,6 +2,9 @@
  * Fastify server bootstrap.
  */
 import Fastify from 'fastify';
+import fastifyStatic from '@fastify/static';
+import fastifyFormbody from '@fastify/formbody';
+import path from 'path';
 import { lookupTyped } from 'mnemonica';
 import {
 	RouteData, PageData, RenderData, ResponseData
@@ -18,6 +21,15 @@ const RequestData = lookupTyped('RequestData');
 
 const app = Fastify({
 	loggerInstance : logger
+});
+
+// Parse form-encoded bodies (jQuery $.ajax default)
+await app.register(fastifyFormbody);
+
+// Serve static files (admin panel assets) at /admin prefix
+await app.register(fastifyStatic, {
+	root: path.join(process.cwd(), 'public'),
+	prefix: '/admin'
 });
 
 // Wire up mnemonica collection hooks to Pino (default collection)
@@ -87,11 +99,7 @@ app.get('/test-chain', async (_req, reply) => {
 		.send(responseData.body);
 });
 
-// Register frontend page route
-const { default : registerFrontend } = await import('../routes/frontend.js');
-await registerFrontend(app);
-
-// Register admin API routes
+// Register admin API routes first (before frontend catch-all)
 const { default : registerSettings } = await import('../routes/engine/settings.js');
 await registerSettings(app);
 
@@ -106,6 +114,13 @@ await registerTemplateAction(app);
 
 const { default : registerApi } = await import('../routes/engine/api.js');
 await registerApi(app);
+
+const { default : registerAdmin } = await import('../routes/engine/admin.js');
+await registerAdmin(app);
+
+// Register frontend page route LAST (catch-all)
+const { default : registerFrontend } = await import('../routes/frontend.js');
+await registerFrontend(app);
 
 const PORT = Number(process.env.PORT) || 3000;
 

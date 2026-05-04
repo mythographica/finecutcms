@@ -6,25 +6,25 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import '../../core/collections/engineTypes.js';
 import { lookupTyped } from 'mnemonica';
-import { getfiles, setfiles, mkdirp, removeRecursive, paths as resolvePaths, fileExists, parseHeader } from '../../lib/fileUtils.js';
+import { getfiles, setfiles, mkdirp, removeRecursive, paths as resolvePaths, fileExists } from '../../lib/fileUtils.js';
 const ROOT = process.cwd();
 const EngineRequest = lookupTyped('EngineRequest');
-async function getPage(pagePath) {
-    const [header, content, infoRaw, blocksRaw] = await Promise.all([
-        parseHeader(pagePath),
+export async function getPage(pagePath) {
+    const [header, content, info, blocks] = await Promise.all([
+        getfiles('header.txt', pagePath),
         getfiles('content.txt', pagePath),
         getfiles('info.txt', pagePath),
         getfiles('blocks.txt', pagePath)
     ]);
-    const info = infoRaw
-        ? JSON.parse(infoRaw)
-        : {};
-    const blocks = blocksRaw
-        ? JSON.parse(blocksRaw)
-        : [];
-    return { header, content, info, blocks, path: pagePath };
+    return {
+        header: header || '{}',
+        content: content || '',
+        info: info || '',
+        blocks: blocks || '[]',
+        path: pagePath
+    };
 }
-async function setPage(pagePath, data) {
+export async function setPage(pagePath, data) {
     let header = data.header;
     const content = data.content || '';
     const blocks = data.blocks;
@@ -100,6 +100,18 @@ export default async function (app) {
             const treeResult = new engineRequest.TreeResult({ tree });
             return reply.type('application/json').send(treeResult.tree);
         }
+        if (action === 'set') {
+            const target = path.join(ROOT, 'data/pages', leaf, pageName);
+            if (await fileExists(target)) {
+                reply.code(409);
+                return reply.type('application/json').send({ error: 'Page already exists' });
+            }
+            await mkdirp(target);
+            if (data) {
+                await setPage(target, data);
+            }
+            return reply.type('application/json').send({ status: true });
+        }
         if (action === 'mkdir') {
             const target = path.join(ROOT, 'data/pages', leaf, pageName);
             await mkdirp(target);
@@ -108,7 +120,7 @@ export default async function (app) {
         if (action === 'del') {
             const target = path.join(ROOT, 'data/pages', leaf, pageName);
             const ok = await removeRecursive(target);
-            return reply.type('application/json').send({ status: ok });
+            return reply.type('application/json').send({ success: ok });
         }
         if (action === 'content_get') {
             const target = resolvePaths(leaf);

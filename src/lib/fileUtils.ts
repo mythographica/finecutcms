@@ -89,7 +89,10 @@ export async function removeRecursive (targetPath: string): Promise<boolean> {
 export function paths (leaf: string): string {
 	const pagesPath = path.join(ROOT, settings.pages);
 	if (!leaf || leaf === '/') return pagesPath;
-	return path.join(pagesPath, leaf);
+	// Strip /top prefix like original PHP: preg_replace('/\/top/', $pages, $leaf, 1)
+	const cleanLeaf = leaf.replace(/^\/top/, '');
+	if (!cleanLeaf || cleanLeaf === '/') return pagesPath;
+	return path.join(pagesPath, cleanLeaf);
 }
 
 /**

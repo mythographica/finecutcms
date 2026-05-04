@@ -2,60 +2,24 @@
  * Admin utility API — clear static cache, page CRUD.
  * Ported from _adm/api.php + page operations from tree_pages.php.
  */
+import { promises as fs } from 'fs';
 import path from 'path';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import '../../core/collections/engineTypes.js';
 import { lookupTyped } from 'mnemonica';
 import { settings } from '../../core/settings.js';
-import { removeRecursive, fileExists, mkdirp, setfiles, getfiles } from '../../lib/fileUtils.js';
-import type { PageFiles, PageHeader } from '../../types/index.js';
+import { removeRecursive, fileExists, mkdirp } from '../../lib/fileUtils.js';
+import { getPage, setPage } from './tree_pages.js';
 
 const ROOT = process.cwd();
+const SETTINGS_PATH = path.join(ROOT, 'data', 'settings.json');
 
 const EngineRequest = lookupTyped('EngineRequest');
-
-type BlockItem = { name: string; value: string };
 
 type App = {
 	get: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
 	post: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
 };
-
-async function getPage (pagePath: string): Promise<PageFiles> {
-	const [headerRaw, content, infoRaw, blocksRaw] = await Promise.all([
-		getfiles('header.txt', pagePath),
-		getfiles('content.txt', pagePath),
-		getfiles('info.txt', pagePath),
-		getfiles('blocks.txt', pagePath)
-	]);
-
-	const header: PageHeader | null = headerRaw
-		? JSON.parse(headerRaw) as PageHeader
-		: null;
-	const info: Record<string, unknown> = infoRaw
-		? JSON.parse(infoRaw) as Record<string, unknown>
-		: {};
-	const blocks: BlockItem[] = blocksRaw
-		? JSON.parse(blocksRaw) as BlockItem[]
-		: [];
-
-	return { header, content, info, blocks, path: pagePath };
-}
-
-async function setPage (pagePath: string, data: Record<string, unknown>): Promise<PageFiles> {
-	const header = data.header as PageHeader | undefined;
-	const content = (data.content as string) || '';
-	const blocks = data.blocks as Array<{ name: string; value: string }> | undefined;
-
-	await Promise.all([
-		setfiles('header.txt', pagePath, JSON.stringify(header)),
-		setfiles('content.txt', pagePath, content),
-		setfiles('blocks.txt', pagePath, JSON.stringify(blocks || [])),
-		setfiles('info.txt', pagePath, (data.info as string) || '')
-	]);
-
-	return getPage(pagePath);
-}
 
 export default async function (app: App): Promise<void> {
 
@@ -99,6 +63,32 @@ export default async function (app: App): Promise<void> {
 			);
 			const pageResult = new engineRequest.PageResult(page);
 			return reply.type('application/json').send({ page: pageResult.page, status : true });
+		}
+
+		if (action === 'set') {
+			const target = path.join(ROOT, settings.pages, leaf, pathName);
+			if (await fileExists(target)) {
+				reply.code(409);
+				return reply.type('application/json').send({ error: 'Page already exists' });
+			}
+			await mkdirp(target);
+			if (data) {
+				await setPage(target, data);
+			}
+			return reply.type('application/json').send({ status : true });
+		}
+
+		if (action === 'settings_path') {
+			return reply.type('text/plain').send(settings.pages);
+		}
+
+		if (action === 'settings') {
+			const dataVal = String(body.data || '');
+			if (dataVal) {
+				await fs.writeFile(SETTINGS_PATH, dataVal, 'utf-8');
+			}
+			const current = await fs.readFile(SETTINGS_PATH, 'utf-8');
+			return reply.type('text/plain').send(current);
 		}
 
 		if (action === 'mkdir') {
