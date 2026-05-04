@@ -5,15 +5,20 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { EngineRequest } from '../../core/collections/engineTypes.js';
+import '../../core/collections/engineTypes.js';
+import { lookupTyped } from 'mnemonica';
 import { settings } from '../../core/settings.js';
 import type { Settings } from '../../types/index.js';
 
 const ROOT = process.cwd();
 const SETTINGS_PATH = path.join(ROOT, 'data', 'settings.json');
 
-type MnemInstance = Record<string, unknown>;
-type MnemCtor = new (...args: unknown[]) => MnemInstance;
+const EngineRequest = lookupTyped('EngineRequest');
+
+type App = {
+	get: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
+	post: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
+};
 
 async function loadSettings (): Promise<Settings> {
 	try {
@@ -30,7 +35,7 @@ async function saveSettings (partial: Partial<Settings>): Promise<Settings> {
 	return merged as Settings;
 }
 
-export default async function (app: { get: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void; post: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void }): Promise<void> {
+export default async function (app: App): Promise<void> {
 
 	app.get('/engine/settings', async (_req: FastifyRequest, reply: FastifyReply) => {
 		const current = await loadSettings();
@@ -38,7 +43,9 @@ export default async function (app: { get: (p: string, h: (req: FastifyRequest, 
 	});
 
 	app.post('/engine/settings', async (req: FastifyRequest, reply: FastifyReply) => {
-		const engineRequest = new (EngineRequest as MnemCtor)({ body: req.body }) as MnemInstance;
+		const engineRequest = new EngineRequest({
+			body: req.body as Record<string, unknown>
+		});
 		const data = engineRequest.data as Partial<Settings> | undefined;
 
 		if (!data) {

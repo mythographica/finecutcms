@@ -4,7 +4,8 @@
  */
 import path from 'path';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { RequestData } from '../core/collections/requestTypes.js';
+import '../core/collections/requestTypes.js';
+import { lookupTyped } from 'mnemonica';
 import { checkStaticCache, writeStaticCache } from '../plugins/static-cache.js';
 import { fileExists, loadPageFiles } from '../lib/fileUtils.js';
 import { render } from '../lib/templateEngine.js';
@@ -13,12 +14,11 @@ import {
 } from '../lib/components.js';
 import '../lib/registerHelpers.js';
 import { settings } from '../core/settings.js';
-import type { TemplateContext, PageFiles } from '../types/index.js';
+import type { TemplateContext } from '../types/index.js';
+
+const RequestData = lookupTyped('RequestData');
 
 const ROOT = process.cwd();
-
-type MnemInstance = Record<string, unknown>;
-type MnemCtor = new (...args: unknown[]) => MnemInstance;
 
 function parseUrl (url: string): string {
 	let uri = decodeURIComponent(url);
@@ -28,11 +28,26 @@ function parseUrl (url: string): string {
 	return '/' + uri;
 }
 
-export default async function (app: { get: (path: string, handler: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void }): Promise<void> {
+type AppGet = {
+	get: (
+		path: string,
+		handler: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>
+	) => void;
+};
+
+export default async function (app: AppGet): Promise<void> {
 
 	app.get('/*', async (req: FastifyRequest, reply: FastifyReply) => {
 		try {
-			const requestData = new (RequestData as MnemCtor)(req) as MnemInstance & { RouteData: MnemCtor };
+			const requestData = new RequestData({
+				method  : req.method,
+				url     : req.url,
+				query   : req.query as Record<string, unknown>,
+				params  : req.params as Record<string, unknown>,
+				body    : req.body as Record<string, unknown>,
+				headers : req.headers as Record<string, unknown>,
+				id      : req.id as string
+			});
 
 			let pagePath = parseUrl(req.url);
 			let isMain = false;
@@ -53,15 +68,15 @@ export default async function (app: { get: (path: string, handler: (req: Fastify
 				pagePath,
 				isMain,
 				deep : ''
-			}) as MnemInstance & { PageData: MnemCtor };
+			});
 
 			const pageFiles = await loadPageFiles(fullPagePath);
-			const pageData = new routeData.PageData(pageFiles) as MnemInstance & { RenderData: MnemCtor };
+			const pageData = new routeData.PageData(pageFiles);
 
 			// Check static cache before rendering
 			const cached = await checkStaticCache(pagePath, pageFiles.header);
 			if (cached) {
-				const cachedRenderData = new pageData.RenderData({ components : {} }) as MnemInstance & { ResponseData: MnemCtor };
+				const cachedRenderData = new pageData.RenderData({});
 				const responseData = new cachedRenderData.ResponseData({
 					body : cached,
 					contentType : 'text/html',
@@ -69,9 +84,9 @@ export default async function (app: { get: (path: string, handler: (req: Fastify
 					fromCache : true
 				});
 				return reply
-					.type(responseData.contentType as string)
-					.code(responseData.statusCode as number)
-					.send(responseData.body as string);
+					.type(responseData.contentType)
+					.code(responseData.statusCode)
+					.send(responseData.body);
 			}
 
 			// Resolve components
@@ -83,23 +98,23 @@ export default async function (app: { get: (path: string, handler: (req: Fastify
 				menuLeft       : await menuLeft(pageData as unknown as TemplateContext)
 			};
 
-			const renderData = new pageData.RenderData(components) as MnemInstance & { ResponseData: MnemCtor };
+			const renderData = new pageData.RenderData(components);
 			const templatePath = path.join(
 				ROOT, 'views', 'templates',
-				(renderData.template as string) || 'default',
+				renderData.template || 'default',
 				'index.html'
 			);
 
 			const context: TemplateContext = {
-				header     : renderData.header as PageFiles['header'],
-				content    : renderData.content as string,
-				info       : renderData.info as Record<string, unknown>,
-				blocks     : renderData.blocks as Array<{ name: string; value: string }>,
+				header     : renderData.header,
+				content    : renderData.content,
+				info       : renderData.info,
+				blocks     : renderData.blocks,
 				components : renderData.components as Record<string, string>,
-				isMain     : renderData.isMain as boolean,
-				deep       : renderData.deep as string,
-				pagePath   : renderData.pagePath as string,
-				path       : renderData.path as string
+				isMain     : renderData.isMain,
+				deep       : renderData.deep,
+				pagePath   : renderData.pagePath,
+				path       : renderData.path
 			};
 
 			const html = await render(templatePath, context);
@@ -114,14 +129,17 @@ export default async function (app: { get: (path: string, handler: (req: Fastify
 			});
 
 			return reply
-				.type(responseData.contentType as string)
-				.code(responseData.statusCode as number)
-				.send(responseData.body as string);
+				.type(responseData.contentType)
+				.code(responseData.statusCode)
+				.send(responseData.body);
 
 		} catch (err) {
 			req.log.error(err);
 			reply.code(500);
-			return reply.type('text/html').send(`<h1>500 Internal Server Error</h1><pre>${(err as Error).message}</pre>`);
+			return reply.type('text/html').send(
+				`<h1>500 Internal Server Error</h1>` +
+				`<pre>${(err as Error).message}</pre>`
+			);
 		}
 	});
 }

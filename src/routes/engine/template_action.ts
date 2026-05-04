@@ -4,13 +4,18 @@
  */
 import path from 'path';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { EngineRequest } from '../../core/collections/engineTypes.js';
+import '../../core/collections/engineTypes.js';
+import { lookupTyped } from 'mnemonica';
 import { getfiles, setfiles, removeRecursive, fileExists, mkdirp } from '../../lib/fileUtils.js';
 
 const ROOT = process.cwd();
 
-type MnemInstance = Record<string, unknown>;
-type MnemCtor = new (...args: unknown[]) => MnemInstance;
+const EngineRequest = lookupTyped('EngineRequest');
+
+type App = {
+	get: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
+	post: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
+};
 
 async function readTemplate (templatePath: string): Promise<{ source: string; snippet: string; header: string }> {
 	const indexPath = path.join(templatePath, 'index.html');
@@ -32,7 +37,7 @@ async function writeTemplate (templatePath: string, source: string, snippet: str
 	]);
 }
 
-export default async function (app: { get: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void; post: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void }): Promise<void> {
+export default async function (app: App): Promise<void> {
 
 	app.get('/engine/template-action', async (req: FastifyRequest, reply: FastifyReply) => {
 		const query = req.query as Record<string, unknown>;
@@ -45,7 +50,9 @@ export default async function (app: { get: (p: string, h: (req: FastifyRequest, 
 		}
 
 		const templatePath = path.join(ROOT, 'views', 'templates', template);
-		const engineRequest = new (EngineRequest as MnemCtor)({ body: { action, template } }) as MnemInstance;
+		const engineRequest = new EngineRequest({
+			body: { action, template } as Record<string, unknown>
+		});
 
 		if (action === 'get') {
 			if (!await fileExists(templatePath)) {
@@ -53,7 +60,7 @@ export default async function (app: { get: (p: string, h: (req: FastifyRequest, 
 				return reply.type('application/json').send({ error: 'Template not found' });
 			}
 			const data = await readTemplate(templatePath);
-			const templateResult = new (engineRequest as MnemInstance & { TemplateResult: MnemCtor }).TemplateResult(data);
+			const templateResult = new engineRequest.TemplateResult(data);
 			return reply.type('application/json').send(templateResult.template);
 		}
 
@@ -63,7 +70,7 @@ export default async function (app: { get: (p: string, h: (req: FastifyRequest, 
 				return reply.type('application/json').send({ error: 'Template not found' });
 			}
 			const { snippet, header } = await readTemplate(templatePath);
-			const templateResult = new (engineRequest as MnemInstance & { TemplateResult: MnemCtor }).TemplateResult({ snippet, header });
+			const templateResult = new engineRequest.TemplateResult({ snippet, header });
 			return reply.type('application/json').send(templateResult.template);
 		}
 
@@ -85,16 +92,19 @@ export default async function (app: { get: (p: string, h: (req: FastifyRequest, 
 		}
 
 		const templatePath = path.join(ROOT, 'views', 'templates', template);
+		const engineRequest = new EngineRequest({
+			body: { action, template } as Record<string, unknown>
+		});
 
 		if (action === 'add') {
 			if (await fileExists(templatePath)) {
 				reply.code(409);
-				return reply.type('application/json').send({ error: 'Template with the same name already exists.' });
+				return reply.type('application/json').send({ error: 'Template already exists' });
 			}
-
 			await mkdirp(templatePath);
 			await writeTemplate(templatePath, source, snippet, header);
-			return reply.type('application/json').send({ success : true });
+			const templateResult = new engineRequest.TemplateResult({ source, snippet, header });
+			return reply.type('application/json').send(templateResult.template);
 		}
 
 		if (action === 'save') {
@@ -102,19 +112,14 @@ export default async function (app: { get: (p: string, h: (req: FastifyRequest, 
 				reply.code(404);
 				return reply.type('application/json').send({ error: 'Template not found' });
 			}
-
 			await writeTemplate(templatePath, source, snippet, header);
-			return reply.type('application/json').send({ success : true });
+			const templateResult = new engineRequest.TemplateResult({ source, snippet, header });
+			return reply.type('application/json').send(templateResult.template);
 		}
 
 		if (action === 'del') {
-			if (!await fileExists(templatePath)) {
-				reply.code(404);
-				return reply.type('application/json').send({ error: 'Template not found' });
-			}
-
 			const ok = await removeRecursive(templatePath);
-			return reply.type('application/json').send({ success : ok });
+			return reply.type('application/json').send({ status : ok });
 		}
 
 		reply.code(400);

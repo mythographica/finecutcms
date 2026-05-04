@@ -14,6 +14,9 @@ describe('engine routes', () => {
 	beforeAll(async () => {
 		app = Fastify({ logger: false });
 
+		// Ensure mnemonica types are registered before lookupTyped is called
+		await import('../../src/core/collections/engineTypes.js');
+
 		// Register engine routes directly
 		const { default: registerSettings } = await import('../../src/routes/engine/settings.js');
 		await registerSettings(app);

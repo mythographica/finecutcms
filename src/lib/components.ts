@@ -103,7 +103,9 @@ export async function menuLeft (ctx: TemplateContext): Promise<string> {
 			const subItems = item.menu.map((sub) => {
 				if (sub.type === 'link') {
 					const subActive = sub.link === activeLink;
-					return `<li><a href="${ctx.deep}${sub.link}" class="${subActive ? 'active' : ''}">${sub.title}</a></li>`;
+					const href = `${ctx.deep}${sub.link}`;
+					const cls = subActive ? 'active' : '';
+					return `<li><a href="${href}" class="${cls}">${sub.title}</a></li>`;
 				}
 				if (sub.type === 'divider') return '<li class="divider"></li>';
 				if (sub.type === 'header') return `<li class="header">${sub.title}</li>`;

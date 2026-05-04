@@ -2,35 +2,30 @@
  * Fastify server bootstrap.
  */
 import Fastify from 'fastify';
+import { lookupTyped } from 'mnemonica';
 import {
-	requestTypes, RequestData, RouteData, PageData, RenderData, ResponseData
+	RouteData, PageData, RenderData, ResponseData
 } from './collections/requestTypes.js';
 import {
-	engineTypes, EngineRequest, TreeResult, PageResult, CacheResult, TemplateResult
+	EngineRequest, TreeResult, PageResult, CacheResult, TemplateResult
 } from './collections/engineTypes.js';
+import { defaultTypes } from 'mnemonica';
 import { createLogger, setupCollectionLogging } from '../plugins/pino-logger.js';
 
 const logger = createLogger();
+
+const RequestData = lookupTyped('RequestData');
 
 const app = Fastify({
 	loggerInstance : logger
 });
 
-// Wire up mnemonica collection hooks to Pino
-setupCollectionLogging(
-	requestTypes as { registerHook: (type: string, cb: (data: Record<string, unknown>) => void) => void },
-	logger
-);
-setupCollectionLogging(
-	engineTypes as { registerHook: (type: string, cb: (data: Record<string, unknown>) => void) => void },
-	logger
-);
+// Wire up mnemonica collection hooks to Pino (default collection)
+setupCollectionLogging(defaultTypes as unknown as {
+	registerHook: (hookType: string, callback: (hookData: Record<string, unknown>) => void) => void;
+}, logger);
 
-// Decorate Fastify with mnemonica collections for route access
-app.decorate('requestTypes', requestTypes);
-app.decorate('engineTypes', engineTypes);
-
-// Expose individual constructors for convenience
+// Decorate Fastify with mnemonica constructors for route access
 app.decorate('RequestData', RequestData);
 app.decorate('RouteData', RouteData);
 app.decorate('PageData', PageData);
@@ -50,20 +45,35 @@ app.get('/health', async () => {
 
 // Test endpoint: verify mnemonica chain works
 app.get('/test-chain', async (_req, reply) => {
-	const requestData = new (RequestData as new (req: Record<string, unknown>) => Record<string, unknown> & { RouteData: new (...args: unknown[]) => Record<string, unknown> })({ url : '/test', method : 'GET', query : {}, params : {}, body : {}, headers : {}, id : 'test' });
+	const requestData = new RequestData({
+		method  : 'GET',
+		url     : '/test',
+		query   : {},
+		params  : {},
+		body    : {},
+		headers : {},
+		id      : 'test'
+	});
 	const routeData = new requestData.RouteData({
 		pagePath : '/test',
-		isMain : false,
-		deep : ''
-	}) as Record<string, unknown> & { PageData: new (...args: unknown[]) => Record<string, unknown> };
+		isMain   : false,
+		deep     : ''
+	});
 	const pageData = new routeData.PageData({
-		header : { title : 'Test' },
+		header : {
+			title       : 'Test',
+			template    : 'default',
+			pageIsCode  : false,
+			keywords    : '',
+			description : '',
+			additional  : ''
+		},
 		content : 'Hello from mnemonica chain',
-		info : {},
-		blocks : [],
-		path : '/test'
-	}) as Record<string, unknown> & { RenderData: new (...args: unknown[]) => Record<string, unknown> };
-	const renderData = new pageData.RenderData({ parser : 'test' }) as Record<string, unknown> & { ResponseData: new (...args: unknown[]) => Record<string, unknown> };
+		info    : {},
+		blocks  : [],
+		path    : '/test'
+	});
+	const renderData = new pageData.RenderData({ parser : 'test' });
 	const responseData = new renderData.ResponseData({
 		body : JSON.stringify({}),
 		contentType : 'application/json',
@@ -72,9 +82,9 @@ app.get('/test-chain', async (_req, reply) => {
 	});
 
 	return reply
-		.type(responseData.contentType as string)
-		.code(responseData.statusCode as number)
-		.send(responseData.body as string);
+		.type(responseData.contentType)
+		.code(responseData.statusCode)
+		.send(responseData.body);
 });
 
 // Register frontend page route
@@ -98,12 +108,17 @@ const { default : registerApi } = await import('../routes/engine/api.js');
 await registerApi(app);
 
 const PORT = Number(process.env.PORT) || 3000;
-const HOST = process.env.HOST || '127.0.0.1';
 
-try {
-	await app.listen({ port : PORT, host : HOST });
-	logger.info(`FineCut server listening on http://${HOST}:${PORT}`);
-} catch (err) {
-	logger.error(err);
-	process.exit(1);
+// Start the server if this file is run directly (not imported)
+if (import.meta.url === `file://${process.argv[1]}`) {
+	app.listen({ port: PORT, host: '0.0.0.0' })
+		.then(() => {
+			logger.info(`FineCut server listening on http://0.0.0.0:${PORT}`);
+		})
+		.catch((err: Error) => {
+			logger.error(err);
+			process.exit(1);
+		});
 }
+
+export { app, logger, PORT };

@@ -24,7 +24,11 @@ function get (obj: Record<string, unknown>, path: string): unknown {
 	return result;
 }
 
-export function compile (template: string): (ctx: TemplateContext, helpersMap: Map<string, HelperFn>, getFn: typeof get) => string {
+export function compile (template: string): (
+	ctx: TemplateContext,
+	helpersMap: Map<string, HelperFn>,
+	getFn: typeof get
+) => string {
 	const escaped = template
 		.replace(/\\/g, '\\\\')
 		.replace(/`/g, '\\`')
@@ -37,7 +41,11 @@ export function compile (template: string): (ctx: TemplateContext, helpersMap: M
 		.replace(/\{\{>(\w+)\}\}/g, '\${helpers.get(\'$1\')?.(ctx) ?? \'\'}')
 		.replace(/\{\{([^}]+)\}\}/g, '\${get(ctx, \'$1\') ?? \'\'}');
 
-	return new Function('ctx', 'helpers', 'get', `return \`${code}\`;`) as (ctx: TemplateContext, helpersMap: Map<string, HelperFn>, getFn: typeof get) => string;
+	return new Function('ctx', 'helpers', 'get', `return \`${code}\`;`) as (
+		ctx: TemplateContext,
+		helpersMap: Map<string, HelperFn>,
+		getFn: typeof get
+	) => string;
 }
 
 export async function render (templatePath: string, context: TemplateContext): Promise<string> {

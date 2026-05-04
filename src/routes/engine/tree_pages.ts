@@ -5,7 +5,8 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { EngineRequest } from '../../core/collections/engineTypes.js';
+import '../../core/collections/engineTypes.js';
+import { lookupTyped } from 'mnemonica';
 import {
 	getfiles, setfiles, mkdirp, removeRecursive, paths as resolvePaths, fileExists, parseHeader
 } from '../../lib/fileUtils.js';
@@ -13,12 +14,15 @@ import type { PageFiles, PageHeader } from '../../types/index.js';
 
 const ROOT = process.cwd();
 
-type MnemInstance = Record<string, unknown>;
-type MnemCtor = new (...args: unknown[]) => MnemInstance;
+const EngineRequest = lookupTyped('EngineRequest');
 
-/**
- * Load all page files for a given page path.
- */
+type BlockItem = { name: string; value: string };
+
+type App = {
+	get: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
+	post: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
+};
+
 async function getPage (pagePath: string): Promise<PageFiles> {
 	const [header, content, infoRaw, blocksRaw] = await Promise.all([
 		parseHeader(pagePath),
@@ -27,15 +31,16 @@ async function getPage (pagePath: string): Promise<PageFiles> {
 		getfiles('blocks.txt', pagePath)
 	]);
 
-	const info: Record<string, unknown> = infoRaw ? JSON.parse(infoRaw) as Record<string, unknown> : {};
-	const blocks: Array<{ name: string; value: string }> = blocksRaw ? JSON.parse(blocksRaw) as Array<{ name: string; value: string }> : [];
+	const info: Record<string, unknown> = infoRaw
+		? JSON.parse(infoRaw) as Record<string, unknown>
+		: {};
+	const blocks: BlockItem[] = blocksRaw
+		? JSON.parse(blocksRaw) as BlockItem[]
+		: [];
 
 	return { header, content, info, blocks, path: pagePath };
 }
 
-/**
- * Save page data. If info is empty, fills from template snippet.
- */
 async function setPage (pagePath: string, data: Record<string, unknown>): Promise<PageFiles> {
 	let header = data.header as PageHeader | undefined;
 	const content = (data.content as string) || '';
@@ -44,7 +49,6 @@ async function setPage (pagePath: string, data: Record<string, unknown>): Promis
 	let infoContent = (data.info as string) || '';
 	const isEmpty = !infoContent;
 
-	// Auto-fill from template defaults when creating new page
 	if (isEmpty && header?.template) {
 		const templatePath = path.join(ROOT, 'views', 'templates', header.template);
 		const snippetPath = path.join(templatePath, 'snippet.txt');
@@ -69,9 +73,8 @@ async function setPage (pagePath: string, data: Record<string, unknown>): Promis
 	return getPage(pagePath);
 }
 
-export default async function (app: { get: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void; post: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void }): Promise<void> {
+export default async function (app: App): Promise<void> {
 
-	// GET /engine/tree — list pages at a leaf
 	app.get('/engine/tree', async (req: FastifyRequest, reply: FastifyReply) => {
 		const query = req.query as Record<string, unknown>;
 		const leaf = String(query.leaf || '');
@@ -84,13 +87,14 @@ export default async function (app: { get: (p: string, h: (req: FastifyRequest, 
 				return { name : e.name };
 			});
 
-		const engineRequest = new (EngineRequest as MnemCtor)({ body: { action: 'get', leaf } }) as MnemInstance;
-		const treeResult = new (engineRequest as MnemInstance & { TreeResult: MnemCtor }).TreeResult({ tree });
+		const engineRequest = new EngineRequest({
+			body: { action: 'get', leaf } as Record<string, unknown>
+		});
+		const treeResult = new engineRequest.TreeResult({ tree });
 
 		return reply.type('application/json').send(treeResult.tree);
 	});
 
-	// GET /engine/page — get page content
 	app.get('/engine/page', async (req: FastifyRequest, reply: FastifyReply) => {
 		const query = req.query as Record<string, unknown>;
 		const leaf = String(query.leaf || '');
@@ -102,13 +106,14 @@ export default async function (app: { get: (p: string, h: (req: FastifyRequest, 
 		}
 
 		const page = await getPage(pagePath);
-		const engineRequest = new (EngineRequest as MnemCtor)({ body: { action: 'content_get', leaf } }) as MnemInstance;
-		const pageResult = new (engineRequest as MnemInstance & { PageResult: MnemCtor }).PageResult(page);
+		const engineRequest = new EngineRequest({
+			body: { action: 'content_get', leaf } as Record<string, unknown>
+		});
+		const pageResult = new engineRequest.PageResult(page);
 
 		return reply.type('application/json').send({ page: pageResult.page, status : true });
 	});
 
-	// POST /engine/tree — create, delete, or set page
 	app.post('/engine/tree', async (req: FastifyRequest, reply: FastifyReply) => {
 		const body = req.body as Record<string, unknown>;
 		const action = String(body.action || '');
@@ -116,59 +121,47 @@ export default async function (app: { get: (p: string, h: (req: FastifyRequest, 
 		const pageName = String(body.path || '');
 		const data = body.data as Record<string, unknown> | undefined;
 
-		const engineRequest = new (EngineRequest as MnemCtor)({ body: req.body }) as MnemInstance;
+		const engineRequest = new EngineRequest({
+			body: req.body as Record<string, unknown>
+		});
 
 		if (action === 'get') {
-			// Same as GET /engine/tree
 			const pagesPath = resolvePaths(leaf);
 			const entries = await fs.readdir(pagesPath, { withFileTypes: true });
 			const tree = entries
 				.filter(e => e.isDirectory())
 				.map(e => ({ name : e.name }));
-			const treeResult = new (engineRequest as MnemInstance & { TreeResult: MnemCtor }).TreeResult({ tree });
+			const treeResult = new engineRequest.TreeResult({ tree });
 			return reply.type('application/json').send(treeResult.tree);
 		}
 
-		if (action === 'del') {
-			const pagePath = resolvePaths(leaf);
-			const ok = await removeRecursive(pagePath);
-			return reply.type('application/json').send({ success : ok });
+		if (action === 'mkdir') {
+			const target = path.join(ROOT, 'data/pages', leaf, pageName);
+			await mkdirp(target);
+			return reply.type('application/json').send({ status : true });
 		}
 
-		if (action === 'set') {
-			const parentPath = resolvePaths(leaf);
-			const newPath = path.join(parentPath, pageName);
+		if (action === 'del') {
+			const target = path.join(ROOT, 'data/pages', leaf, pageName);
+			const ok = await removeRecursive(target);
+			return reply.type('application/json').send({ status : ok });
+		}
 
-			if (await fileExists(newPath)) {
-				reply.code(409);
-				return reply.type('application/json').send({ error: 'The page with the same name already exists.' });
-			}
-
-			await mkdirp(newPath);
-			await Promise.all([
-				setfiles('info.txt', newPath, ''),
-				setfiles('header.txt', newPath, ''),
-				setfiles('content.txt', newPath, ''),
-				setfiles('blocks.txt', newPath, '')
-			]);
-
-			if (data) {
-				const page = await setPage(newPath, data);
-				const pageResult = new (engineRequest as MnemInstance & { PageResult: MnemCtor }).PageResult(page);
-				return reply.type('application/json').send({ page: pageResult.page, status : true });
-			}
-
-			return reply.type('application/json').send({ success : true });
+		if (action === 'content_get') {
+			const target = resolvePaths(leaf);
+			const page = await getPage(target);
+			const pageResult = new engineRequest.PageResult(page);
+			return reply.type('application/json').send({ page: pageResult.page, status : true });
 		}
 
 		if (action === 'content_set') {
-			const pagePath = resolvePaths(leaf);
-			if (!await fileExists(pagePath)) {
-				reply.code(404);
-				return reply.type('application/json').send({ error: 'Page not found' });
+			if (!data) {
+				reply.code(400);
+				return reply.type('application/json').send({ error: 'Missing data' });
 			}
-			const page = await setPage(pagePath, data || {});
-			const pageResult = new (engineRequest as MnemInstance & { PageResult: MnemCtor }).PageResult(page);
+			const target = resolvePaths(leaf);
+			const page = await setPage(target, data);
+			const pageResult = new engineRequest.PageResult(page);
 			return reply.type('application/json').send({ page: pageResult.page, status : true });
 		}
 

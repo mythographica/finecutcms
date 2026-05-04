@@ -12,11 +12,11 @@
 		"skipLibCheck": true,
 		"types": ["node"],
 		"outDir": "./build",
-		"rootDir": "./src",
+		"rootDir": ".",
 		"sourceMap": true,
 		"resolveJsonModule": true,
 		"forceConsistentCasingInFileNames": true
 	},
-	"include": ["src/**/*"],
+	"include": ["src/**/*", ".tactica/*.ts"],
 	"exclude": ["node_modules", "build", "data", "test"]
 }

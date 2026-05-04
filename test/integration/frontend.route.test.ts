@@ -7,6 +7,8 @@ describe('frontend route', () => {
 
 	beforeAll(async () => {
 		app = Fastify({ logger: false });
+		// Ensure mnemonica types are registered before lookupTyped is called
+		await import('../../src/core/collections/requestTypes.js');
 		const { default: registerFrontend } = await import('../../src/routes/frontend.js');
 		await registerFrontend(app);
 		await app.ready();

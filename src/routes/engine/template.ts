@@ -8,7 +8,11 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 
 const ROOT = process.cwd();
 
-export default async function (app: { get: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void }): Promise<void> {
+type AppGet = {
+	get: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
+};
+
+export default async function (app: AppGet): Promise<void> {
 
 	app.get('/engine/template', async (_req: FastifyRequest, reply: FastifyReply) => {
 		const templatesPath = path.join(ROOT, 'views', 'templates');

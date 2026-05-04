@@ -7,6 +7,8 @@ import path from 'path';
 import { settings } from '../core/settings.js';
 import type { PageFiles, PageHeader } from '../types/index.js';
 
+type BlockItem = { name: string; value: string };
+
 const ROOT = process.cwd();
 
 /**
@@ -114,8 +116,12 @@ export async function loadPageFiles (pagePath: string): Promise<PageFiles> {
 		getfiles('blocks.txt', pagePath)
 	]);
 
-	const info: Record<string, unknown> = infoRaw ? JSON.parse(infoRaw) as Record<string, unknown> : {};
-	const blocks: Array<{ name: string; value: string }> = blocksRaw ? JSON.parse(blocksRaw) as Array<{ name: string; value: string }> : [];
+	const info: Record<string, unknown> = infoRaw
+		? JSON.parse(infoRaw) as Record<string, unknown>
+		: {};
+	const blocks: BlockItem[] = blocksRaw
+		? JSON.parse(blocksRaw) as BlockItem[]
+		: [];
 
 	return { header, content, info, blocks, path: pagePath };
 }
