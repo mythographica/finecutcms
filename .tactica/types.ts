@@ -36,6 +36,14 @@ export type RequestData_RouteData_PageData = ProtoFlat<RequestData_RouteData, {
 }>;
 
 export type RequestData_RouteData_PageData_RenderData = ProtoFlat<RequestData_RouteData_PageData, {
+	header: { header: { title: string; template: string; pageIsCode: boolean; keywords: string; description: string; additional: string } | null; content: string; info: Record<string, unknown>; blocks: Array<{ name: string; value: string }>; path: string }['header'];
+	content: string;
+	info: Record<string, unknown>;
+	blocks: Array<{ name: string; value: string }>;
+	path: string;
+	isMain: boolean;
+	deep: string;
+	pagePath: string;
 	components: Record<string, string | Promise<string>>;
 	template: string | undefined;
 	ResponseData: new (output: { body: string; contentType: string; statusCode: number; fromCache: boolean }) => RequestData_RouteData_PageData_RenderData_ResponseData;
@@ -51,19 +59,19 @@ export type RequestData_RouteData_PageData_RenderData_ResponseData = ProtoFlat<R
 }>;
 
 export type EngineRequest = {
-	action: unknown;
-	data: unknown;
-	leaf: unknown;
-	path: unknown;
-	template: unknown;
-	TreeResult: new (result: { tree: unknown }) => EngineRequest_TreeResult;
-	PageResult: new (pageData: unknown) => EngineRequest_PageResult;
+	action: string;
+	data?: Record<string, unknown>;
+	leaf: string;
+	path: string;
+	template: string;
+	TreeResult: new (result: { tree: Array<{ name: string; folder?: boolean }> }) => EngineRequest_TreeResult;
+	PageResult: new (pageData: { header: string; content: string; info: string; blocks: string; path: string }) => EngineRequest_PageResult;
 	CacheResult: new (cleared: boolean) => EngineRequest_CacheResult;
-	TemplateResult: new (templateData: unknown) => EngineRequest_TemplateResult;
+	TemplateResult: new (templateData: { source?: string; snippet?: string; header?: string }) => EngineRequest_TemplateResult;
 };
 
 export type EngineRequest_TreeResult = ProtoFlat<EngineRequest, {
-	tree: unknown;
+	tree: Array<{ name: string; folder?: boolean }>;
 	TreeResult: undefined;
 	PageResult: undefined;
 	CacheResult: undefined;
@@ -71,7 +79,7 @@ export type EngineRequest_TreeResult = ProtoFlat<EngineRequest, {
 }>;
 
 export type EngineRequest_PageResult = ProtoFlat<EngineRequest, {
-	page: unknown;
+	page: { header: string; content: string; info: string; blocks: string; path: string };
 	PageResult: undefined;
 	TreeResult: undefined;
 	CacheResult: undefined;
@@ -87,7 +95,7 @@ export type EngineRequest_CacheResult = ProtoFlat<EngineRequest, {
 }>;
 
 export type EngineRequest_TemplateResult = ProtoFlat<EngineRequest, {
-	template: unknown;
+	template: { source?: string; snippet?: string; header?: string };
 	TemplateResult: undefined;
 	TreeResult: undefined;
 	PageResult: undefined;

@@ -1,195 +1,183 @@
 {
   "version": "1.0",
-  "generatedAt": "2026-05-03T22:43:55.734Z",
+  "generatedAt": "2026-05-05T08:49:41.477Z",
   "usages": {
-    "RequestData": [
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:32:28",
-        "kind": "lookup",
-        "code": "lookupTyped('RequestData')"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:33:24",
-        "kind": "instantiation",
-        "code": "new RequestDataCtor(req)"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/core/server.ts:43:22",
-        "kind": "instantiation",
-        "code": "new RequestData({ url : '/test', method : 'GET', query : {}, params : {}, body : {}, headers : {}, i"
-      }
-    ],
-    "RequestData.RouteData": [
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:50:26",
-        "kind": "propertyAccess",
-        "code": "requestData.RouteData"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/core/server.ts:44:24",
-        "kind": "propertyAccess",
-        "code": "requestData.RouteData"
-      }
-    ],
-    "RequestData.RouteData.PageData": [
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:57:25",
-        "kind": "propertyAccess",
-        "code": "routeData.PageData"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/core/server.ts:45:23",
-        "kind": "propertyAccess",
-        "code": "routeData.PageData"
-      }
-    ],
-    "RequestData.RouteData.PageData.RenderData": [
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:62:34",
-        "kind": "propertyAccess",
-        "code": "pageData.RenderData"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:84:27",
-        "kind": "propertyAccess",
-        "code": "pageData.RenderData"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/core/server.ts:52:25",
-        "kind": "propertyAccess",
-        "code": "pageData.RenderData"
-      }
-    ],
-    "RequestData.RouteData.PageData.RenderData.ResponseData": [
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:63:30",
-        "kind": "propertyAccess",
-        "code": "cachedRenderData.ResponseData"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:107:29",
-        "kind": "propertyAccess",
-        "code": "renderData.ResponseData"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/core/server.ts:53:27",
-        "kind": "propertyAccess",
-        "code": "renderData.ResponseData"
-      }
-    ],
     "EngineRequest": [
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/settings.ts:38:29",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/settings.ts:16:23",
         "kind": "lookup",
         "code": "lookupTyped('EngineRequest')"
       },
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/settings.ts:39:25",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/settings.ts:46:25",
         "kind": "instantiation",
-        "code": "new EngineRequestCtor({ body: req.body })"
+        "code": "new EngineRequest({\n\t\t\tbody: req.body as Record<string, unknown>\n\t\t})"
       },
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:64:28",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:21:23",
         "kind": "lookup",
         "code": "lookupTyped('EngineRequest')"
       },
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:78:25",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:49:25",
         "kind": "instantiation",
-        "code": "new EngineRequestCtor({ body: { action: 'get', leaf } })"
+        "code": "new EngineRequest({\n\t\t\tbody: { action: 'get', leaf } as Record<string, unknown>\n\t\t})"
       },
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:95:25",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:76:25",
         "kind": "instantiation",
-        "code": "new EngineRequestCtor({ body: { action: 'content_get', leaf } })"
+        "code": "new EngineRequest({\n\t\t\tbody: req.body as Record<string, unknown>\n\t\t})"
       },
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:108:25",
-        "kind": "instantiation",
-        "code": "new EngineRequestCtor({ body: req.body })"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:34:28",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:13:23",
         "kind": "lookup",
         "code": "lookupTyped('EngineRequest')"
       },
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:47:25",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:53:25",
         "kind": "instantiation",
-        "code": "new EngineRequestCtor({ body: { action, template } })"
+        "code": "new EngineRequest({\n\t\t\tbody: { action, template } as Record<string, unknown>\n\t\t})"
       },
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/api.ts:46:28",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:100:26",
+        "kind": "instantiation",
+        "code": "new EngineRequest({\n\t\t\t\tbody: { action, template } as Record<string, unknown>\n\t\t\t})"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:112:26",
+        "kind": "instantiation",
+        "code": "new EngineRequest({\n\t\t\t\tbody: { action, template } as Record<string, unknown>\n\t\t\t})"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/api.ts:23:23",
         "kind": "lookup",
         "code": "lookupTyped('EngineRequest')"
       },
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/api.ts:55:25",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/api.ts:39:25",
         "kind": "instantiation",
-        "code": "new EngineRequestCtor({ body: req.body })"
+        "code": "new EngineRequest({\n\t\t\tbody: req.body as Record<string, unknown>\n\t\t})"
       }
     ],
     "EngineRequest.TreeResult": [
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:79:26",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:52:26",
         "kind": "propertyAccess",
         "code": "engineRequest.TreeResult"
       },
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:116:27",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:95:27",
         "kind": "propertyAccess",
         "code": "engineRequest.TreeResult"
-      }
-    ],
-    "EngineRequest.PageResult": [
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:96:26",
-        "kind": "propertyAccess",
-        "code": "engineRequest.PageResult"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:145:28",
-        "kind": "propertyAccess",
-        "code": "engineRequest.PageResult"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/tree_pages.ts:159:27",
-        "kind": "propertyAccess",
-        "code": "engineRequest.PageResult"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/api.ts:71:27",
-        "kind": "propertyAccess",
-        "code": "engineRequest.PageResult"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/api.ts:82:27",
-        "kind": "propertyAccess",
-        "code": "engineRequest.PageResult"
-      },
-      {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/api.ts:105:28",
-        "kind": "propertyAccess",
-        "code": "engineRequest.PageResult"
       }
     ],
     "EngineRequest.TemplateResult": [
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:55:31",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:63:31",
         "kind": "propertyAccess",
         "code": "engineRequest.TemplateResult"
       },
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:65:31",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:73:31",
+        "kind": "propertyAccess",
+        "code": "engineRequest.TemplateResult"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:103:31",
+        "kind": "propertyAccess",
+        "code": "engineRequest.TemplateResult"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/template_action.ts:115:31",
         "kind": "propertyAccess",
         "code": "engineRequest.TemplateResult"
       }
     ],
     "EngineRequest.CacheResult": [
       {
-        "location": "/code/mnemonica/finecutnode/src/routes/engine/api.ts:60:28",
+        "location": "/code/mnemonica/finecutnode/src/routes/engine/api.ts:46:28",
         "kind": "propertyAccess",
         "code": "engineRequest.CacheResult"
+      }
+    ],
+    "RequestData": [
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:19:21",
+        "kind": "lookup",
+        "code": "lookupTyped('RequestData')"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:42:24",
+        "kind": "instantiation",
+        "code": "new RequestData({\n\t\t\t\tmethod  : req.method,\n\t\t\t\turl     : req.url,\n\t\t\t\tquery   : req.query as Record"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/core/server.ts:21:21",
+        "kind": "lookup",
+        "code": "lookupTyped('RequestData')"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/core/server.ts:77:22",
+        "kind": "instantiation",
+        "code": "new RequestData({\n\t\tmethod  : 'GET',\n\t\turl     : '/test',\n\t\tquery   : {},\n\t\tparams  : {},\n\t\tbody    "
+      }
+    ],
+    "RequestData.RouteData": [
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:67:26",
+        "kind": "propertyAccess",
+        "code": "requestData.RouteData"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/core/server.ts:86:24",
+        "kind": "propertyAccess",
+        "code": "requestData.RouteData"
+      }
+    ],
+    "RequestData.RouteData.PageData": [
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:74:25",
+        "kind": "propertyAccess",
+        "code": "routeData.PageData"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/core/server.ts:91:23",
+        "kind": "propertyAccess",
+        "code": "routeData.PageData"
+      }
+    ],
+    "RequestData.RouteData.PageData.RenderData": [
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:79:34",
+        "kind": "propertyAccess",
+        "code": "pageData.RenderData"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:101:27",
+        "kind": "propertyAccess",
+        "code": "pageData.RenderData"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/core/server.ts:105:25",
+        "kind": "propertyAccess",
+        "code": "pageData.RenderData"
+      }
+    ],
+    "RequestData.RouteData.PageData.RenderData.ResponseData": [
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:80:30",
+        "kind": "propertyAccess",
+        "code": "cachedRenderData.ResponseData"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/routes/frontend.ts:122:29",
+        "kind": "propertyAccess",
+        "code": "renderData.ResponseData"
+      },
+      {
+        "location": "/code/mnemonica/finecutnode/src/core/server.ts:106:27",
+        "kind": "propertyAccess",
+        "code": "renderData.ResponseData"
       }
     ]
   }

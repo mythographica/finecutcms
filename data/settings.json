@@ -1,1 +1,9 @@
-{"val":""}
+{
+	"pages": "data/pages",
+	"use_static": true,
+	"static": "data/static",
+	"perm_folder": 493,
+	"perm_file": 420,
+	"fileNameEncoding": "UTF-8",
+	"microtimeEcho": true
+}

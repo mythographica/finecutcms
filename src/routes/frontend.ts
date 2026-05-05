@@ -6,7 +6,7 @@ import path from 'path';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import '../core/collections/requestTypes.js';
 import { lookupTyped } from 'mnemonica';
-import { checkStaticCache, writeStaticCache } from '../plugins/static-cache.js';
+import { checkStaticCache } from '../plugins/static-cache.js';
 import { fileExists, loadPageFiles } from '../lib/fileUtils.js';
 import { render } from '../lib/templateEngine.js';
 import {
@@ -91,11 +91,11 @@ export default async function (app: AppGet): Promise<void> {
 
 			// Resolve components
 			const components = {
-				jsonInfo       : jsonInfo(pageData as unknown as TemplateContext),
+				jsonInfo       : jsonInfo(pageData),
 				headAdditional : headAdditional(),
-				contentParser  : await contentParser(pageData as unknown as TemplateContext),
-				menuMain       : await menuMain(pageData as unknown as TemplateContext),
-				menuLeft       : await menuLeft(pageData as unknown as TemplateContext)
+				contentParser  : await contentParser(pageData),
+				menuMain       : await menuMain(pageData),
+				menuLeft       : await menuLeft(pageData)
 			};
 
 			const renderData = new pageData.RenderData(components);
@@ -118,8 +118,6 @@ export default async function (app: AppGet): Promise<void> {
 			};
 
 			const html = await render(templatePath, context);
-
-			await writeStaticCache(pagePath, html);
 
 			const responseData = new renderData.ResponseData({
 				body : html,

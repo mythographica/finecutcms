@@ -5,7 +5,7 @@
 import path from 'path';
 import '../core/collections/requestTypes.js';
 import { lookupTyped } from 'mnemonica';
-import { checkStaticCache, writeStaticCache } from '../plugins/static-cache.js';
+import { checkStaticCache } from '../plugins/static-cache.js';
 import { fileExists, loadPageFiles } from '../lib/fileUtils.js';
 import { render } from '../lib/templateEngine.js';
 import { jsonInfo, headAdditional, contentParser, menuMain, menuLeft } from '../lib/components.js';
@@ -87,7 +87,6 @@ export default async function (app) {
                 path: renderData.path
             };
             const html = await render(templatePath, context);
-            await writeStaticCache(pagePath, html);
             const responseData = new renderData.ResponseData({
                 body: html,
                 contentType: 'text/html',

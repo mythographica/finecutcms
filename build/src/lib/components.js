@@ -29,10 +29,18 @@ export function headAdditional() {
  * Parse page content — returns raw content.
  */
 export async function contentParser(ctx) {
+    let content = ctx.content || '';
     if (ctx.header?.pageIsCode) {
-        return ctx.content || '';
+        return content;
     }
-    return ctx.content || '';
+    // Rewrite absolute URLs to include deep prefix (ported from PHP preparseContentStr)
+    if (ctx.deep) {
+        content = content.replace(/href="\//g, `href="${ctx.deep}/`);
+        content = content.replace(/href = "\//g, `href = "${ctx.deep}/`);
+        content = content.replace(/src="\//g, `src="${ctx.deep}/`);
+        content = content.replace(/src = "\//g, `src = "${ctx.deep}/`);
+    }
+    return content;
 }
 /**
  * Render main navigation menu.
@@ -104,5 +112,39 @@ export async function menuLeft(ctx) {
         return `<li><a href="${ctx.deep}${item.link}" class="${isActive ? 'active' : ''}">${item.title}</a></li>`;
     });
     return items.join('');
+}
+/**
+ * Recursively list documentation pages.
+ * Ported from components/menu_documents/index.php.
+ */
+export async function menuDocuments(_ctx) {
+    const docsPath = path.join(ROOT, 'data', 'pages', 'documentation');
+    if (!await fileExists(docsPath))
+        return '';
+    async function readDirs(dir, prefix) {
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+        const items = [];
+        for (const entry of entries) {
+            if (!entry.isDirectory())
+                continue;
+            const entryPath = path.join(dir, entry.name);
+            const headerPath = path.join(entryPath, 'header.txt');
+            let title = entry.name;
+            if (await fileExists(headerPath)) {
+                const headerRaw = await fs.readFile(headerPath, 'utf-8').catch(() => '{}');
+                try {
+                    const header = JSON.parse(headerRaw);
+                    if (header.title)
+                        title = header.title;
+                }
+                catch { /* ignore */ }
+            }
+            const link = prefix ? `${prefix}/${entry.name}` : entry.name;
+            items.push(`<li><a href="/${link}/">${title}</a></li>`);
+            items.push(await readDirs(entryPath, link));
+        }
+        return items.join('');
+    }
+    return `<ol>${await readDirs(docsPath, 'documentation')}</ol>`;
 }
 //# sourceMappingURL=components.js.map

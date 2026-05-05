@@ -24,6 +24,33 @@
 
 		$( '#tabsContent' ).tabs();
 
+		// Populate template dropdowns from /engine/template
+		var loadTemplates = function(){
+			$.ajax({
+				  type: 'GET'
+				, async: false
+				, dataType: 'json'
+				, url: '/engine/template'
+				, success: function( data ){
+					var selects = [
+						'#treePagesEditor-template',
+						'#templManager-template',
+						'#tree-dialog-leaf-add-form-template'
+					];
+					$.each( selects, function( i, sel ){
+						var $sel = $( sel );
+						$sel.empty();
+						$sel.append( '<option value="default">Default</option>' );
+						$.each( data, function( j, tpl ){
+							$sel.append( '<option value="' + tpl.name + '">' + tpl.name + '</option>' );
+						} );
+					} );
+				}
+				, error: function(){ /* ignore */ }
+			});
+		};
+		loadTemplates();
+
 		// for saving changes: copy/paste;
 		var _emptyleaf = function(){
 			/*

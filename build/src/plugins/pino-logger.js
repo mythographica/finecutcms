@@ -30,7 +30,7 @@ export function setupCollectionLogging(collection, log) {
     });
     collection.registerHook('creationError', (hookData) => {
         const existentInstance = hookData.existentInstance;
-        const error = hookData.error;
+        const error = hookData.inheritedInstance;
         log.error({
             event: 'transform.error',
             TypeName: hookData.TypeName,

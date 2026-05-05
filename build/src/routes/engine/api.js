@@ -7,8 +7,8 @@ import path from 'path';
 import '../../core/collections/engineTypes.js';
 import { lookupTyped } from 'mnemonica';
 import { settings } from '../../core/settings.js';
-import { removeRecursive, fileExists, mkdirp } from '../../lib/fileUtils.js';
-import { getPage, setPage } from './tree_pages.js';
+import { removeRecursive } from '../../lib/fileUtils.js';
+import { handleContentGet, handleContentSet, handleSet, handleMkdir, handleDel } from '../../lib/engineActions.js';
 const ROOT = process.cwd();
 const SETTINGS_PATH = path.join(ROOT, 'data', 'settings.json');
 const EngineRequest = lookupTyped('EngineRequest');
@@ -29,35 +29,32 @@ export default async function (app) {
             return reply.type('application/json').send({ cleared: cacheResult.cleared });
         }
         if (action === 'content_get') {
-            const pagesPath = path.join(ROOT, settings.pages, leaf);
-            if (!await fileExists(pagesPath)) {
+            try {
+                const result = await handleContentGet(leaf);
+                return reply.type('application/json').send(result);
+            }
+            catch (err) {
                 reply.code(404);
                 return reply.type('application/json').send({ error: 'Page not found' });
             }
-            const page = await getPage(pagesPath);
-            const pageResult = new engineRequest.PageResult(page);
-            return reply.type('application/json').send({ page: pageResult.page, status: true });
         }
         if (action === 'content_set') {
             if (!data) {
                 reply.code(400);
                 return reply.type('application/json').send({ error: 'Missing data' });
             }
-            const page = await setPage(path.join(ROOT, settings.pages, leaf), data);
-            const pageResult = new engineRequest.PageResult(page);
-            return reply.type('application/json').send({ page: pageResult.page, status: true });
+            const result = await handleContentSet(leaf, data);
+            return reply.type('application/json').send(result);
         }
         if (action === 'set') {
-            const target = path.join(ROOT, settings.pages, leaf, pathName);
-            if (await fileExists(target)) {
+            try {
+                const result = await handleSet(leaf, pathName, data);
+                return reply.type('application/json').send(result);
+            }
+            catch (err) {
                 reply.code(409);
                 return reply.type('application/json').send({ error: 'Page already exists' });
             }
-            await mkdirp(target);
-            if (data) {
-                await setPage(target, data);
-            }
-            return reply.type('application/json').send({ status: true });
         }
         if (action === 'settings_path') {
             return reply.type('text/plain').send(settings.pages);
@@ -71,14 +68,12 @@ export default async function (app) {
             return reply.type('text/plain').send(current);
         }
         if (action === 'mkdir') {
-            const target = path.join(ROOT, settings.pages, leaf, pathName);
-            await mkdirp(target);
-            return reply.type('application/json').send({ status: true });
+            const result = await handleMkdir(leaf, pathName);
+            return reply.type('application/json').send(result);
         }
         if (action === 'del') {
-            const target = path.join(ROOT, settings.pages, leaf, pathName);
-            const ok = await removeRecursive(target);
-            return reply.type('application/json').send({ status: ok });
+            const result = await handleDel(leaf, pathName);
+            return reply.type('application/json').send(result);
         }
         reply.code(400);
         return reply.type('application/json').send({ error: 'Unknown action' });

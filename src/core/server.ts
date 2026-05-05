@@ -14,6 +14,7 @@ import {
 } from './collections/engineTypes.js';
 import { defaultTypes } from 'mnemonica';
 import { createLogger, setupCollectionLogging } from '../plugins/pino-logger.js';
+import { writeStaticCache } from '../plugins/static-cache.js';
 
 const logger = createLogger();
 
@@ -33,9 +34,21 @@ await app.register(fastifyStatic, {
 });
 
 // Wire up mnemonica collection hooks to Pino (default collection)
-setupCollectionLogging(defaultTypes as unknown as {
-	registerHook: (hookType: string, callback: (hookData: Record<string, unknown>) => void) => void;
-}, logger);
+setupCollectionLogging(defaultTypes, logger);
+
+// Wire up static cache write hook — automatically cache successful responses
+defaultTypes.registerHook('postCreation', (hookData) => {
+	if (hookData.TypeName === 'ResponseData') {
+		const instance = hookData.inheritedInstance as Record<string, unknown>;
+		const fromCache = instance.fromCache as boolean;
+		const statusCode = instance.statusCode as number;
+		if (!fromCache && statusCode === 200) {
+			writeStaticCache(instance.pagePath as string, instance.body as string).catch((err: Error) => {
+				logger.error({ err: err.message }, 'static cache write failed');
+			});
+		}
+	}
+});
 
 // Decorate Fastify with mnemonica constructors for route access
 app.decorate('RequestData', RequestData);

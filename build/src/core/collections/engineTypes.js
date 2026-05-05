@@ -3,11 +3,11 @@
  */
 import { define } from 'mnemonica';
 export const EngineRequest = define('EngineRequest', function (req) {
-    this.action = req.body.action;
+    this.action = String(req.body.action || '');
     this.data = req.body.data;
-    this.leaf = req.body.leaf;
-    this.path = req.body.path;
-    this.template = req.body.template;
+    this.leaf = String(req.body.leaf || '');
+    this.path = String(req.body.path || '');
+    this.template = String(req.body.template || '');
 });
 export const TreeResult = EngineRequest.define('TreeResult', function (result) {
     this.tree = result.tree;

@@ -36,10 +36,10 @@ declare module 'mnemonica' {
 		'RequestData.RouteData.PageData.RenderData': new (components: Record<string, string | Promise<string>>) => RequestData_RouteData_PageData_RenderData;
 		'RequestData.RouteData.PageData.RenderData.ResponseData': new (output: { body: string; contentType: string; statusCode: number; fromCache: boolean }) => RequestData_RouteData_PageData_RenderData_ResponseData;
 		'EngineRequest': new (req: { body: Record<string, unknown> }) => EngineRequest;
-		'EngineRequest.TreeResult': new (result: { tree: unknown }) => EngineRequest_TreeResult;
-		'EngineRequest.PageResult': new (pageData: unknown) => EngineRequest_PageResult;
+		'EngineRequest.TreeResult': new (result: { tree: Array<{ name: string; folder?: boolean }> }) => EngineRequest_TreeResult;
+		'EngineRequest.PageResult': new (pageData: { header: string; content: string; info: string; blocks: string; path: string }) => EngineRequest_PageResult;
 		'EngineRequest.CacheResult': new (cleared: boolean) => EngineRequest_CacheResult;
-		'EngineRequest.TemplateResult': new (templateData: unknown) => EngineRequest_TemplateResult;
+		'EngineRequest.TemplateResult': new (templateData: { source?: string; snippet?: string; header?: string }) => EngineRequest_TemplateResult;
 	}
 }
 

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "generatedAt": "2026-05-03T22:43:55.731Z",
+  "generatedAt": "2026-05-05T08:49:41.476Z",
   "definitions": {
     "RequestData": {
       "name": "RequestData",
@@ -36,7 +36,7 @@
     },
     "RequestData.RouteData.PageData.RenderData.ResponseData": {
       "name": "ResponseData",
-      "location": "/code/mnemonica/finecutnode/src/core/collections/requestTypes.ts:78:40",
+      "location": "/code/mnemonica/finecutnode/src/core/collections/requestTypes.ts:86:40",
       "kind": "define",
       "parent": "RequestData.RouteData.PageData.RenderData",
       "strictChain": true,
@@ -44,7 +44,7 @@
     },
     "EngineRequest": {
       "name": "EngineRequest",
-      "location": "/code/mnemonica/finecutnode/src/core/collections/engineTypes.ts:6:30",
+      "location": "/code/mnemonica/finecutnode/src/core/collections/engineTypes.ts:22:30",
       "kind": "define",
       "parent": null,
       "strictChain": true,
@@ -52,7 +52,7 @@
     },
     "EngineRequest.TreeResult": {
       "name": "TreeResult",
-      "location": "/code/mnemonica/finecutnode/src/core/collections/engineTypes.ts:23:41",
+      "location": "/code/mnemonica/finecutnode/src/core/collections/engineTypes.ts:33:41",
       "kind": "define",
       "parent": "EngineRequest",
       "strictChain": true,
@@ -60,7 +60,7 @@
     },
     "EngineRequest.PageResult": {
       "name": "PageResult",
-      "location": "/code/mnemonica/finecutnode/src/core/collections/engineTypes.ts:30:41",
+      "location": "/code/mnemonica/finecutnode/src/core/collections/engineTypes.ts:40:41",
       "kind": "define",
       "parent": "EngineRequest",
       "strictChain": true,
@@ -68,7 +68,7 @@
     },
     "EngineRequest.CacheResult": {
       "name": "CacheResult",
-      "location": "/code/mnemonica/finecutnode/src/core/collections/engineTypes.ts:37:42",
+      "location": "/code/mnemonica/finecutnode/src/core/collections/engineTypes.ts:47:42",
       "kind": "define",
       "parent": "EngineRequest",
       "strictChain": true,
@@ -76,7 +76,7 @@
     },
     "EngineRequest.TemplateResult": {
       "name": "TemplateResult",
-      "location": "/code/mnemonica/finecutnode/src/core/collections/engineTypes.ts:44:45",
+      "location": "/code/mnemonica/finecutnode/src/core/collections/engineTypes.ts:54:45",
       "kind": "define",
       "parent": "EngineRequest",
       "strictChain": true,

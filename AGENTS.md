@@ -138,6 +138,92 @@ If you find yourself writing `as unknown as` with mnemonica instance types, **yo
 
 ---
 
+## 5. Hook Patterns
+
+Mnemonica collection hooks fire for **every type in the collection**. Three hooks exist:
+
+- `preCreation` — fires before a new instance is created
+- `postCreation` — fires after a new instance is created
+- `creationError` — fires when creation throws an error
+
+Hook callbacks are typed through `hooksOpts` from mnemonica:
+
+```typescript
+import type { hooksOpts, TypesCollection } from 'mnemonica';
+
+function setupHooks (collection: TypesCollection) {
+	collection.registerHook('postCreation', (hookData: hooksOpts) => {
+		// hookData.TypeName is string | undefined
+		// hookData.inheritedInstance is object
+		// hookData.args is unknown[]
+	});
+}
+```
+
+### Pattern 1: Observability (Logging)
+
+```typescript
+// src/plugins/pino-logger.ts
+collection.registerHook('preCreation', (hookData: hooksOpts) => {
+	const parent = hookData.existentInstance as Record<string, unknown> | undefined;
+	log.info({
+		event     : 'transform.start',
+		TypeName  : hookData.TypeName,
+		requestId : parent?.requestId as string | undefined
+	}, 'starting transformation');
+});
+```
+
+### Pattern 2: Side Effects (Caching)
+
+```typescript
+// src/core/server.ts
+collection.registerHook('postCreation', (hookData: hooksOpts) => {
+	if (hookData.TypeName === 'ResponseData') {
+		const instance = hookData.inheritedInstance as Record<string, unknown>;
+		if (!instance.fromCache && instance.statusCode === 200) {
+			writeStaticCache(instance.pagePath as string, instance.body as string);
+		}
+	}
+});
+```
+
+### Pattern 3: Metrics (Timing)
+
+```typescript
+const timings = new Map<string, number>();
+
+collection.registerHook('preCreation', (hookData: hooksOpts) => {
+	timings.set(hookData.TypeName, performance.now());
+});
+
+collection.registerHook('postCreation', (hookData: hooksOpts) => {
+	const start = timings.get(hookData.TypeName);
+	if (start) {
+		metrics.histogram('transform.duration', performance.now() - start, {
+			TypeName: hookData.TypeName
+		});
+	}
+});
+```
+
+### Pattern 4: Validation
+
+```typescript
+collection.registerHook('preCreation', (hookData: hooksOpts) => {
+	if (hookData.TypeName === 'PageData') {
+		const pageFiles = hookData.args[0] as { path?: string };
+		if (!pageFiles.path) {
+			throw new Error('PageData requires path');
+		}
+	}
+});
+```
+
+**Key principle:** Hooks are cross-cutting. Zero business logic references. All behavior is observed from outside.
+
+---
+
 ## Quick Reference
 
 | Situation | What to do |
@@ -146,6 +232,7 @@ If you find yourself writing `as unknown as` with mnemonica instance types, **yo
 | Need to chain instances | `new parent.Child({ ... })` — no cast needed |
 | About to write `as unknown as` | Stop. Use `lookupTyped` instead |
 | Decorating Fastify with constructors | Direct import is fine (`app.decorate('X', X)`) — decoration is runtime-only |
+| Need collection hook types | `import type { TypesCollection, hooksOpts } from 'mnemonica'` |
 | Type not found | Run `npm run tactica` to regenerate `.tactica/` |
 
 ---

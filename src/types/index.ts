@@ -3,6 +3,8 @@
  * All instance data uses `type`, never `interface`.
  */
 
+import type { RequestData_RouteData_PageData } from '../../.tactica/types.js';
+
 // Page metadata from header.txt
 export type PageHeader = {
 	title       : string;
@@ -37,17 +39,15 @@ export type ResponseOutput = {
 	fromCache   : boolean;
 };
 
-// Template render context
-export type TemplateContext = {
-	header     : PageHeader | null;
-	content    : string;
-	info       : Record<string, unknown>;
-	blocks     : Array<{ name: string; value: string }>;
-	components : Record<string, string>;
-	isMain     : boolean;
-	deep       : string;
-	pagePath   : string;
-	path       : string;
+// Base page context — data properties from the mnemonica PageData instance
+// Used for component functions before components are resolved.
+export type PageContext = Pick<RequestData_RouteData_PageData,
+	'header' | 'content' | 'info' | 'blocks' | 'path' | 'isMain' | 'deep' | 'pagePath'
+>;
+
+// Template render context — extends page data with resolved components
+export type TemplateContext = PageContext & {
+	components: Record<string, string>;
 };
 
 // Template helper function signature (sync or async)

@@ -7,76 +7,23 @@ import path from 'path';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import '../../core/collections/engineTypes.js';
 import { lookupTyped } from 'mnemonica';
+import { paths as resolvePaths } from '../../lib/fileUtils.js';
 import {
-	getfiles, setfiles, mkdirp, removeRecursive, paths as resolvePaths, fileExists
-} from '../../lib/fileUtils.js';
-import type { PageHeader } from '../../types/index.js';
+	handleContentGet,
+	handleContentSet,
+	handleSet,
+	handleMkdir,
+	handleDel
+} from '../../lib/engineActions.js';
 
-const ROOT = process.cwd();
+export { getPage, setPage } from '../../lib/pageStore.js';
 
 const EngineRequest = lookupTyped('EngineRequest');
-
-export type rawPageFiles = {
-	header  : string;
-	content : string;
-	info    : string;
-	blocks  : string;
-	path    : string;
-};
 
 type App = {
 	get: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
 	post: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
 };
-
-export async function getPage (pagePath: string): Promise<rawPageFiles> {
-	const [header, content, info, blocks] = await Promise.all([
-		getfiles('header.txt', pagePath),
-		getfiles('content.txt', pagePath),
-		getfiles('info.txt', pagePath),
-		getfiles('blocks.txt', pagePath)
-	]);
-
-	return {
-		header: header || '{}',
-		content: content || '',
-		info: info || '',
-		blocks: blocks || '[]',
-		path: pagePath
-	};
-}
-
-export async function setPage (pagePath: string, data: Record<string, unknown>): Promise<rawPageFiles> {
-	let header = data.header as PageHeader | undefined;
-	const content = (data.content as string) || '';
-	const blocks = data.blocks as Array<{ name: string; value: string }> | undefined;
-
-	let infoContent = (data.info as string) || '';
-	const isEmpty = !infoContent;
-
-	if (isEmpty && header?.template) {
-		const templatePath = path.join(ROOT, 'views', 'templates', header.template);
-		const snippetPath = path.join(templatePath, 'snippet.txt');
-		if (await fileExists(snippetPath)) {
-			infoContent = await getfiles('snippet.txt', templatePath);
-		}
-
-		const templateHeaderPath = path.join(templatePath, 'header.txt');
-		if (await fileExists(templateHeaderPath)) {
-			const headerRaw = await getfiles('header.txt', templatePath);
-			header = headerRaw ? JSON.parse(headerRaw) as PageHeader : header;
-		}
-	}
-
-	await Promise.all([
-		setfiles('header.txt', pagePath, JSON.stringify(header)),
-		setfiles('content.txt', pagePath, content),
-		setfiles('blocks.txt', pagePath, JSON.stringify(blocks || [])),
-		setfiles('info.txt', pagePath, infoContent)
-	]);
-
-	return getPage(pagePath);
-}
 
 export default async function (app: App): Promise<void> {
 
@@ -86,11 +33,18 @@ export default async function (app: App): Promise<void> {
 		const pagesPath = resolvePaths(leaf);
 
 		const entries = await fs.readdir(pagesPath, { withFileTypes: true });
-		const tree = entries
-			.filter(e => e.isDirectory())
-			.map(e => {
-				return { name : e.name };
-			});
+		const tree = await Promise.all(
+			entries
+				.filter(e => e.isDirectory())
+				.map(async e => {
+					const subEntries = await fs.readdir(
+						path.join(pagesPath, e.name),
+						{ withFileTypes: true }
+					).catch(() => [] as Awaited<ReturnType<typeof fs.readdir>>);
+					const hasSubdirs = subEntries.some(se => se.isDirectory());
+					return { name: e.name, folder: hasSubdirs };
+				})
+		);
 
 		const engineRequest = new EngineRequest({
 			body: { action: 'get', leaf } as Record<string, unknown>
@@ -103,20 +57,13 @@ export default async function (app: App): Promise<void> {
 	app.get('/engine/page', async (req: FastifyRequest, reply: FastifyReply) => {
 		const query = req.query as Record<string, unknown>;
 		const leaf = String(query.leaf || '');
-		const pagePath = resolvePaths(leaf);
-
-		if (!await fileExists(pagePath)) {
+		try {
+			const result = await handleContentGet(leaf);
+			return reply.type('application/json').send(result);
+		} catch (err) {
 			reply.code(404);
 			return reply.type('application/json').send({ error: 'Page not found' });
 		}
-
-		const page = await getPage(pagePath);
-		const engineRequest = new EngineRequest({
-			body: { action: 'content_get', leaf } as Record<string, unknown>
-		});
-		const pageResult = new engineRequest.PageResult(page);
-
-		return reply.type('application/json').send({ page: pageResult.page, status : true });
 	});
 
 	app.post('/engine/tree', async (req: FastifyRequest, reply: FastifyReply) => {
@@ -133,43 +80,50 @@ export default async function (app: App): Promise<void> {
 		if (action === 'get') {
 			const pagesPath = resolvePaths(leaf);
 			const entries = await fs.readdir(pagesPath, { withFileTypes: true });
-			const tree = entries
-				.filter(e => e.isDirectory())
-				.map(e => ({ name : e.name }));
+			const tree = await Promise.all(
+				entries
+					.filter(e => e.isDirectory())
+					.map(async e => {
+						const subEntries = await fs.readdir(
+							path.join(pagesPath, e.name),
+							{ withFileTypes: true }
+						).catch(() => [] as Awaited<ReturnType<typeof fs.readdir>>);
+						const hasSubdirs = subEntries.some(se => se.isDirectory());
+						return { name: e.name, folder: hasSubdirs };
+					})
+			);
 			const treeResult = new engineRequest.TreeResult({ tree });
 			return reply.type('application/json').send(treeResult.tree);
 		}
 
 		if (action === 'set') {
-			const target = path.join(ROOT, 'data/pages', leaf, pageName);
-			if (await fileExists(target)) {
+			try {
+				const result = await handleSet(leaf, pageName, data);
+				return reply.type('application/json').send(result);
+			} catch (err) {
 				reply.code(409);
 				return reply.type('application/json').send({ error: 'Page already exists' });
 			}
-			await mkdirp(target);
-			if (data) {
-				await setPage(target, data);
-			}
-			return reply.type('application/json').send({ status : true });
 		}
 
 		if (action === 'mkdir') {
-			const target = path.join(ROOT, 'data/pages', leaf, pageName);
-			await mkdirp(target);
-			return reply.type('application/json').send({ status : true });
+			const result = await handleMkdir(leaf, pageName);
+			return reply.type('application/json').send(result);
 		}
 
 		if (action === 'del') {
-			const target = path.join(ROOT, 'data/pages', leaf, pageName);
-			const ok = await removeRecursive(target);
-			return reply.type('application/json').send({ success : ok });
+			const result = await handleDel(leaf, pageName);
+			return reply.type('application/json').send(result);
 		}
 
 		if (action === 'content_get') {
-			const target = resolvePaths(leaf);
-			const page = await getPage(target);
-			const pageResult = new engineRequest.PageResult(page);
-			return reply.type('application/json').send({ page: pageResult.page, status : true });
+			try {
+				const result = await handleContentGet(leaf);
+				return reply.type('application/json').send(result);
+			} catch (err) {
+				reply.code(404);
+				return reply.type('application/json').send({ error: 'Page not found' });
+			}
 		}
 
 		if (action === 'content_set') {
@@ -177,10 +131,8 @@ export default async function (app: App): Promise<void> {
 				reply.code(400);
 				return reply.type('application/json').send({ error: 'Missing data' });
 			}
-			const target = resolvePaths(leaf);
-			const page = await setPage(target, data);
-			const pageResult = new engineRequest.PageResult(page);
-			return reply.type('application/json').send({ page: pageResult.page, status : true });
+			const result = await handleContentSet(leaf, data);
+			return reply.type('application/json').send(result);
 		}
 
 		reply.code(400);

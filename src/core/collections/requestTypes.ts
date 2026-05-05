@@ -66,13 +66,21 @@ export const PageData = RouteData.define('PageData', function (
 
 export const RenderData = PageData.define('RenderData', function (
 	this: {
+		header: PageFiles['header'];
+		content: string;
+		info: Record<string, unknown>;
+		blocks: Array<{ name: string; value: string }>;
+		path: string;
+		isMain: boolean;
+		deep: string;
+		pagePath: string;
 		components: Record<string, string | Promise<string>>;
 		template: string | undefined;
 	},
 	components: Record<string, string | Promise<string>>
 ) {
 	this.components = components;
-	this.template = (this as unknown as { header: PageFiles['header'] }).header?.template;
+	this.template = this.header?.template;
 });
 
 export const ResponseData = RenderData.define('ResponseData', function (

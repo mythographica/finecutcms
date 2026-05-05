@@ -5,14 +5,14 @@
 import path from 'path';
 import { promises as fs } from 'fs';
 import { fileExists } from './fileUtils.js';
-import type { TemplateContext } from '../types/index.js';
+import type { PageContext } from '../types/index.js';
 
 const ROOT = process.cwd();
 
 /**
  * Generate meta tags from page info metadata.
  */
-export function jsonInfo (ctx: TemplateContext): string {
+export function jsonInfo (ctx: PageContext): string {
 	const info = ctx.info || {};
 	const lines: string[] = [];
 	if (info.meta && typeof info.meta === 'object') {
@@ -33,17 +33,25 @@ export function headAdditional (): string {
 /**
  * Parse page content — returns raw content.
  */
-export async function contentParser (ctx: TemplateContext): Promise<string> {
+export async function contentParser (ctx: PageContext): Promise<string> {
+	let content = ctx.content || '';
 	if (ctx.header?.pageIsCode) {
-		return ctx.content || '';
+		return content;
 	}
-	return ctx.content || '';
+	// Rewrite absolute URLs to include deep prefix (ported from PHP preparseContentStr)
+	if (ctx.deep) {
+		content = content.replace(/href="\//g, `href="${ctx.deep}/`);
+		content = content.replace(/href = "\//g, `href = "${ctx.deep}/`);
+		content = content.replace(/src="\//g, `src="${ctx.deep}/`);
+		content = content.replace(/src = "\//g, `src = "${ctx.deep}/`);
+	}
+	return content;
 }
 
 /**
  * Render main navigation menu.
  */
-export async function menuMain (ctx: TemplateContext): Promise<string> {
+export async function menuMain (ctx: PageContext): Promise<string> {
 	const menuFile = path.join(ROOT, 'data', 'menu_main.json');
 	if (!await fileExists(menuFile)) return '';
 
@@ -83,7 +91,7 @@ export async function menuMain (ctx: TemplateContext): Promise<string> {
 /**
  * Render left sidebar menu.
  */
-export async function menuLeft (ctx: TemplateContext): Promise<string> {
+export async function menuLeft (ctx: PageContext): Promise<string> {
 	const menuFile = path.join(ROOT, 'data', 'menu_left.json');
 	if (!await fileExists(menuFile)) return '';
 
@@ -119,4 +127,37 @@ export async function menuLeft (ctx: TemplateContext): Promise<string> {
 	});
 
 	return items.join('');
+}
+
+/**
+ * Recursively list documentation pages.
+ * Ported from components/menu_documents/index.php.
+ */
+export async function menuDocuments (_ctx: PageContext): Promise<string> {
+	const docsPath = path.join(ROOT, 'data', 'pages', 'documentation');
+	if (!await fileExists(docsPath)) return '';
+
+	async function readDirs (dir: string, prefix: string): Promise<string> {
+		const entries = await fs.readdir(dir, { withFileTypes: true });
+		const items: string[] = [];
+		for (const entry of entries) {
+			if (!entry.isDirectory()) continue;
+			const entryPath = path.join(dir, entry.name);
+			const headerPath = path.join(entryPath, 'header.txt');
+			let title = entry.name;
+			if (await fileExists(headerPath)) {
+				const headerRaw = await fs.readFile(headerPath, 'utf-8').catch(() => '{}');
+				try {
+					const header = JSON.parse(headerRaw) as { title?: string };
+					if (header.title) title = header.title;
+				} catch { /* ignore */ }
+			}
+			const link = prefix ? `${prefix}/${entry.name}` : entry.name;
+			items.push(`<li><a href="/${link}/">${title}</a></li>`);
+			items.push(await readDirs(entryPath, link));
+		}
+		return items.join('');
+	}
+
+	return `<ol>${await readDirs(docsPath, 'documentation')}</ol>`;
 }
