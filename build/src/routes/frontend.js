@@ -22,6 +22,7 @@ function parseUrl(url) {
 }
 export default async function (app) {
     app.get('/*', async (req, reply) => {
+        let pagePath = '';
         try {
             const requestData = new RequestData({
                 method: req.method,
@@ -32,7 +33,7 @@ export default async function (app) {
                 headers: req.headers,
                 id: req.id
             });
-            let pagePath = parseUrl(req.url);
+            pagePath = parseUrl(req.url);
             let isMain = false;
             if (pagePath === '/' || pagePath === '') {
                 pagePath = '/_index';
@@ -99,10 +100,11 @@ export default async function (app) {
                 .send(responseData.body);
         }
         catch (err) {
-            req.log.error(err);
+            const error = err;
+            req.log.error({ err: error.message, pagePath }, 'request failed');
             reply.code(500);
             return reply.type('text/html').send(`<h1>500 Internal Server Error</h1>` +
-                `<pre>${err.message}</pre>`);
+                `<pre>${error.message}</pre>`);
         }
     });
 }

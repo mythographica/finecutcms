@@ -36,6 +36,17 @@ await app.register(fastifyStatic, {
 // Wire up mnemonica collection hooks to Pino (default collection)
 setupCollectionLogging(defaultTypes, logger);
 
+// Validate page data before creation — controlled execution flow
+defaultTypes.registerHook('preCreation', (hookData) => {
+	if (hookData.TypeName === 'PageData') {
+		const args = hookData.args[0] as Record<string, unknown> | undefined;
+		const path = args?.path as string | undefined;
+		if (!path || typeof path !== 'string') {
+			throw new Error('PageData requires a valid path');
+		}
+	}
+});
+
 // Wire up static cache write hook — automatically cache successful responses
 defaultTypes.registerHook('postCreation', (hookData) => {
 	if (hookData.TypeName === 'ResponseData') {

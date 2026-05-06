@@ -38,6 +38,8 @@ type AppGet = {
 export default async function (app: AppGet): Promise<void> {
 
 	app.get('/*', async (req: FastifyRequest, reply: FastifyReply) => {
+		let pagePath = '';
+
 		try {
 			const requestData = new RequestData({
 				method  : req.method,
@@ -49,7 +51,7 @@ export default async function (app: AppGet): Promise<void> {
 				id      : req.id as string
 			});
 
-			let pagePath = parseUrl(req.url);
+			pagePath = parseUrl(req.url);
 			let isMain = false;
 
 			if (pagePath === '/' || pagePath === '') {
@@ -132,11 +134,13 @@ export default async function (app: AppGet): Promise<void> {
 				.send(responseData.body);
 
 		} catch (err) {
-			req.log.error(err);
+			const error = err as Error;
+			req.log.error({ err: error.message, pagePath }, 'request failed');
+
 			reply.code(500);
 			return reply.type('text/html').send(
 				`<h1>500 Internal Server Error</h1>` +
-				`<pre>${(err as Error).message}</pre>`
+				`<pre>${error.message}</pre>`
 			);
 		}
 	});

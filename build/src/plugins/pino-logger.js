@@ -1,8 +1,11 @@
 /**
  * Pino logger configuration with mnemonica collection hook integration.
- * Collection-level hooks fire for ALL types in the collection automatically.
+ *
+ * Uses mnemonica's chain tracing to reconstruct the full execution path
+ * on errors. Every log entry carries request correlation and chain depth.
  */
 import pino from 'pino';
+import { traceChain, formatChainTrace, getRequestId } from '../lib/chainTrace.js';
 export function createLogger() {
     return pino({
         level: process.env.LOG_LEVEL || 'info',
@@ -12,31 +15,82 @@ export function createLogger() {
     });
 }
 export function setupCollectionLogging(collection, log) {
+    // Track timing per request for performance metrics
+    const timings = new Map();
     collection.registerHook('preCreation', (hookData) => {
         const existentInstance = hookData.existentInstance;
+        const requestId = existentInstance?.requestId;
+        if (requestId && hookData.TypeName === 'RequestData') {
+            timings.set(requestId, performance.now());
+        }
         log.info({
             event: 'transform.start',
             TypeName: hookData.TypeName,
-            requestId: existentInstance?.requestId
+            requestId,
+            args: hookData.args.length > 0
+                ? JSON.stringify(hookData.args[0]).slice(0, 200)
+                : undefined
         }, 'starting transformation');
     });
     collection.registerHook('postCreation', (hookData) => {
         const inheritedInstance = hookData.inheritedInstance;
-        log.info({
-            event: 'transform.end',
-            TypeName: hookData.TypeName,
-            requestId: inheritedInstance.requestId
-        }, 'transformation complete');
+        const requestId = inheritedInstance.requestId;
+        if (requestId && hookData.TypeName === 'ResponseData') {
+            const start = timings.get(requestId);
+            const duration = start ? performance.now() - start : undefined;
+            timings.delete(requestId);
+            log.info({
+                event: 'transform.end',
+                TypeName: hookData.TypeName,
+                requestId,
+                duration: duration !== undefined ? Math.round(duration) : undefined
+            }, 'transformation complete');
+        }
+        else {
+            log.info({
+                event: 'transform.end',
+                TypeName: hookData.TypeName,
+                requestId
+            }, 'transformation complete');
+        }
     });
     collection.registerHook('creationError', (hookData) => {
         const existentInstance = hookData.existentInstance;
-        const error = hookData.inheritedInstance;
+        const inheritedInstance = hookData.inheritedInstance;
+        // The error is either inheritedInstance itself (if instanceof Error)
+        // or we need to extract it from the failed creation
+        const error = inheritedInstance instanceof Error
+            ? inheritedInstance
+            : new Error('Unknown creation error');
+        // Reconstruct the full chain up to the point of failure
+        const chainSteps = traceChain(existentInstance);
+        const requestId = getRequestId(existentInstance);
+        const chainDepth = chainSteps.length;
+        const chainTrace = formatChainTrace(chainSteps);
+        // Try to parse the existentInstance for structural context
+        // parse() returns { name, props, joint, parent, self }
+        let instanceParse;
+        try {
+            const instance = existentInstance;
+            const parseFn = instance.parse;
+            if (parseFn) {
+                instanceParse = parseFn();
+            }
+        }
+        catch {
+            // parse() may throw for non-mnemonica instances
+        }
         log.error({
             event: 'transform.error',
             TypeName: hookData.TypeName,
-            requestId: existentInstance?.requestId,
-            error: error.message
-        }, 'transformation failed');
+            requestId,
+            chainDepth,
+            error: error.message,
+            stack: error.stack?.split('\n').slice(0, 5),
+            chainTrace: chainTrace.split('\n'),
+            instanceName: instanceParse?.name,
+            instanceProps: instanceParse?.props
+        }, `transformation failed at step ${chainDepth}: ${hookData.TypeName}`);
     });
 }
 //# sourceMappingURL=pino-logger.js.map

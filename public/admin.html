@@ -159,10 +159,7 @@
 										<label for = "treePagesEditor-description">Page Description</label>
 										<textarea id = "treePagesEditor-description" cols = "55" rows = "5" class = "tabEditable"></textarea>
 										<div style = "margin:0px 0px 10px 0px">
-<?php
-	include dirname(__FILE__).DIRECTORY_SEPARATOR.'template.php'; 
-	includeTemplates( 'treePagesEditor-template' , '480' , true );
-?>
+<select id="treePagesEditor-template" style="width:480px;"><option value="default">Default</option></select>
 										</div>
 										<div style = "margin: 15px 0px 12px 0px">
 											<input type = "checkbox" id = "treePagesEditor-pageIsCode" 
