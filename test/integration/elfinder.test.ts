@@ -1,5 +1,5 @@
 /**
- * elFinder backend integration tests.
+ * elFinder backend integration tests — using elfinder-node.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import Fastify from 'fastify';
@@ -30,23 +30,26 @@ describe('/engine/elfinder', () => {
 		await app.close();
 	});
 
-	it('GET open returns cwd and files', async () => {
-		const res = await app.inject({ method: 'GET', url: '/engine/elfinder?cmd=open' });
+	it('GET open init returns api, cwd, files, options', async () => {
+		const res = await app.inject({ method: 'GET', url: '/engine/elfinder?cmd=open&init=1' });
 		expect(res.statusCode).toBe(200);
 		const body = JSON.parse(res.payload) as Record<string, unknown>;
+		expect(body.api).toBe('2.1');
 		expect(body.cwd).toBeDefined();
 		expect(body.files).toBeDefined();
 		expect(Array.isArray(body.files)).toBe(true);
+		expect(body.options).toBeDefined();
 	});
 
 	it('GET mkdir creates directory', async () => {
 		const res = await app.inject({
 			method: 'GET',
-			url: '/engine/elfinder?cmd=mkdir&name=_test_dir'
+			url: '/engine/elfinder?cmd=mkdir&name=_test_dir&target=v0_Lw'
 		});
 		expect(res.statusCode).toBe(200);
 		const body = JSON.parse(res.payload) as Record<string, unknown>;
 		expect(body.added).toBeDefined();
+		expect(Array.isArray(body.added)).toBe(true);
 
 		// Clean up
 		await fs.rm(path.join(ROOT, 'data', 'files', '_test_dir'), { recursive: true, force: true });
@@ -55,18 +58,19 @@ describe('/engine/elfinder', () => {
 	it('GET mkfile creates file', async () => {
 		const res = await app.inject({
 			method: 'GET',
-			url: '/engine/elfinder?cmd=mkfile&name=_test_file.txt'
+			url: '/engine/elfinder?cmd=mkfile&name=_test_file.txt&target=v0_Lw'
 		});
 		expect(res.statusCode).toBe(200);
 		const body = JSON.parse(res.payload) as Record<string, unknown>;
 		expect(body.added).toBeDefined();
+		expect(Array.isArray(body.added)).toBe(true);
 
 		// Clean up
 		await fs.unlink(path.join(ROOT, 'data', 'files', '_test_file.txt')).catch(() => {});
 	});
 
 	it('GET ls lists directory', async () => {
-		const res = await app.inject({ method: 'GET', url: '/engine/elfinder?cmd=ls' });
+		const res = await app.inject({ method: 'GET', url: '/engine/elfinder?cmd=ls&target=v0_Lw' });
 		expect(res.statusCode).toBe(200);
 		const body = JSON.parse(res.payload) as Record<string, unknown>;
 		expect(body.list).toBeDefined();
@@ -74,7 +78,7 @@ describe('/engine/elfinder', () => {
 	});
 
 	it('GET tree returns directory tree', async () => {
-		const res = await app.inject({ method: 'GET', url: '/engine/elfinder?cmd=tree' });
+		const res = await app.inject({ method: 'GET', url: '/engine/elfinder?cmd=tree&target=v0_Lw' });
 		expect(res.statusCode).toBe(200);
 		const body = JSON.parse(res.payload) as Record<string, unknown>;
 		expect(body.tree).toBeDefined();
@@ -83,7 +87,7 @@ describe('/engine/elfinder', () => {
 
 	it('returns error for unknown command', async () => {
 		const res = await app.inject({ method: 'GET', url: '/engine/elfinder?cmd=unknown' });
-		expect(res.statusCode).toBe(200);
+		expect(res.statusCode).toBe(500);
 		const body = JSON.parse(res.payload) as Record<string, unknown>;
 		expect(body.error).toBeDefined();
 	});

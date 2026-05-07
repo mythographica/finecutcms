@@ -94,6 +94,27 @@ describe('engine routes', () => {
 			expect(body.status).toBe(true);
 		});
 
+		it('POST action=content_get returns page content', async () => {
+			const res = await app.inject({
+				method: 'POST',
+				url: '/engine/tree',
+				payload: { action: 'content_get', leaf: '_index' }
+			});
+			expect(res.statusCode).toBe(200);
+			const body = JSON.parse(res.payload) as Record<string, unknown>;
+			expect(body.status).toBe(true);
+			expect((body.page as Record<string, unknown>).header).toBeDefined();
+		});
+
+		it('POST action=content_get returns 404 for missing page', async () => {
+			const res = await app.inject({
+				method: 'POST',
+				url: '/engine/tree',
+				payload: { action: 'content_get', leaf: 'nonexistent' }
+			});
+			expect(res.statusCode).toBe(404);
+		});
+
 		it('POST action=set returns 409 for duplicate', async () => {
 			const res = await app.inject({
 				method: 'POST',

@@ -1,66 +1,55 @@
 /**
- * Admin panel route — elFinder backend + redirect to static admin page.
+ * Admin panel route — elFinder backend via elfinder-node + redirect to static admin page.
  */
-import path from 'path';
-import { promises as fs } from 'fs';
 import type { FastifyRequest, FastifyReply } from 'fastify';
-import { mkdirp, removeRecursive } from '../../lib/fileUtils.js';
+import { LFS, driverRegistry } from 'elfinder-node';
 
 const ROOT = process.cwd();
 
-async function buildFileInfo (
-	filePath: string, rootPath: string
-): Promise<Record<string, unknown>> {
-	const stats = await fs.stat(filePath).catch(() => null);
-	if (!stats) {
-		return { error: 'File not found' };
+const roots = [
+	{
+		driver: LFS,
+		path: ROOT,
+		URL: '/',
+		permissions: { read: 1, write: 1, locked: 0 },
 	}
+];
 
-	const name = path.basename(filePath);
-	const isDir = stats.isDirectory();
-	const relativePath = path.relative(rootPath, filePath);
-	const hash = Buffer.from(relativePath || '.').toString('base64')
-		.replace(/[^a-zA-Z0-9]/g, '');
+// Initialize driver registry for direct access
+driverRegistry.initialize(roots);
 
-	return {
-		name,
-		hash,
-		mime : isDir ? 'directory' : 'application/octet-stream',
-		ts   : Math.floor(stats.mtime.getTime() / 1000),
-		size : isDir ? 0 : stats.size,
-		read : true,
-		write: true,
-		locked: false
-	};
-}
+function convertParams (
+	query: Record<string, string>,
+	body: Record<string, unknown>
+): Record<string, unknown> {
+	const raw = Object.keys(body).length > 0 ? body : query;
+	const params: Record<string, unknown> = {};
 
-async function listDir (
-	dirPath: string, rootPath: string
-): Promise<Record<string, unknown>[]> {
-	const entries = await fs.readdir(dirPath, { withFileTypes: true });
-	const result: Record<string, unknown>[] = [];
-
-	for (const entry of entries) {
-		const fullPath = path.join(dirPath, entry.name);
-		const info = await buildFileInfo(fullPath, rootPath);
-		result.push(info);
-	}
-
-	return result;
-}
-
-async function copyDir (src: string, dest: string): Promise<void> {
-	await mkdirp(dest);
-	const entries = await fs.readdir(src, { withFileTypes: true });
-	for (const entry of entries) {
-		const srcPath = path.join(src, entry.name);
-		const destPath = path.join(dest, entry.name);
-		if (entry.isDirectory()) {
-			await copyDir(srcPath, destPath);
+	for (const [key, value] of Object.entries(raw)) {
+		if (value === 'null' || value === 'undefined') {
+			params[key] = null;
+		} else if (value === 'true') {
+			params[key] = true;
+		} else if (value === 'false') {
+			params[key] = false;
+		} else if (value === '1' || value === 1) {
+			params[key] = 1;
+		} else if (value === '0' || value === 0) {
+			params[key] = 0;
 		} else {
-			await fs.copyFile(srcPath, destPath);
+			params[key] = value;
 		}
 	}
+
+	// elfinder-node expects arrays for targets, renames, upload_path
+	const arrKeys = ['targets', 'renames', 'upload_path'];
+	for (const k of arrKeys) {
+		if (params[k] !== undefined && !Array.isArray(params[k])) {
+			params[k] = [params[k]];
+		}
+	}
+
+	return params;
 }
 
 async function handleElfinder (
@@ -69,137 +58,33 @@ async function handleElfinder (
 	const query = req.query as Record<string, string>;
 	const body = (req.body || {}) as Record<string, unknown>;
 	const cmd = query.cmd || (body.cmd as string);
-	const target = query.target || (body.target as string);
-	const filesPath = path.join(ROOT, 'data', 'files');
-	await mkdirp(filesPath);
+	const params = convertParams(query, body);
 
-	const resolvePath = (hash: string): string => {
-		return path.join(
-			filesPath,
-			Buffer.from(hash, 'base64').toString('utf-8')
-		);
-	};
-
-	if (cmd === 'open') {
-		const dirPath = target ? resolvePath(target) : filesPath;
-		const cwd = await buildFileInfo(dirPath, filesPath);
-		const files = await listDir(dirPath, filesPath);
-		return reply.type('application/json').send({ cwd, files });
-	}
-
-	if (cmd === 'mkdir') {
-		const name = String(query.name || body.name || '');
-		const dirPath = target ? resolvePath(target) : filesPath;
-		const newDir = path.join(dirPath, name);
-		await mkdirp(newDir);
-		const added = await buildFileInfo(newDir, filesPath);
-		return reply.type('application/json').send({ added: [added] });
-	}
-
-	if (cmd === 'mkfile') {
-		const name = String(query.name || body.name || '');
-		const dirPath = target ? resolvePath(target) : filesPath;
-		const newFile = path.join(dirPath, name);
-		await fs.writeFile(newFile, '', 'utf-8');
-		const added = await buildFileInfo(newFile, filesPath);
-		return reply.type('application/json').send({ added: [added] });
-	}
-
-	if (cmd === 'rm') {
-		const targets = (query.targets || body.targets || []) as string[];
-		const removed: string[] = [];
-		for (const t of targets) {
-			const filePath = resolvePath(t);
-			await removeRecursive(filePath);
-			removed.push(t);
+	try {
+		const driver = driverRegistry.getDriverForRequest(params);
+		if (typeof driver[cmd] !== 'function') {
+			throw new Error(`'${cmd}' is not implemented by volume driver`);
 		}
-		return reply.type('application/json').send({ removed });
+
+		const result = await driver[cmd](params);
+		return reply.type('application/json').send(result);
+	} catch (e: unknown) {
+		const message = e instanceof Error ? e.message : 'Unknown error';
+		return reply.type('application/json').code(500).send({ error: message });
 	}
-
-	if (cmd === 'ls') {
-		const dirPath = target ? resolvePath(target) : filesPath;
-		const entries = await fs.readdir(dirPath, { withFileTypes: true });
-		const list = entries.map(e => e.name);
-		return reply.type('application/json').send({ list });
-	}
-
-	if (cmd === 'tree') {
-		const dirPath = target ? resolvePath(target) : filesPath;
-		const tree = await listDir(dirPath, filesPath);
-		return reply.type('application/json').send({ tree });
-	}
-
-	if (cmd === 'get') {
-		const filePath = resolvePath(target);
-		const content = await fs.readFile(filePath, 'utf-8').catch(() => '');
-		return reply.type('application/json').send({ content });
-	}
-
-	if (cmd === 'put') {
-		const filePath = resolvePath(target);
-		const content = String(query.content || body.content || '');
-		await fs.writeFile(filePath, content, 'utf-8');
-		const changed = await buildFileInfo(filePath, filesPath);
-		return reply.type('application/json').send({ changed: [changed] });
-	}
-
-	if (cmd === 'rename') {
-		const name = String(query.name || body.name || '');
-		const filePath = resolvePath(target);
-		const dirPath = path.dirname(filePath);
-		const newPath = path.join(dirPath, name);
-		await fs.rename(filePath, newPath);
-		const added = await buildFileInfo(newPath, filesPath);
-		return reply.type('application/json').send({
-			added: [added], removed: [target]
-		});
-	}
-
-	if (cmd === 'paste') {
-		const src = String(query.src || body.src || '');
-		const dst = String(query.dst || body.dst || '');
-		const cut = Number(query.cut || body.cut || 0);
-		const srcPath = resolvePath(src);
-		const dstPath = resolvePath(dst);
-		const name = path.basename(srcPath);
-		const destFile = path.join(dstPath, name);
-
-		if (cut) {
-			await fs.rename(srcPath, destFile);
-		} else {
-			const stat = await fs.stat(srcPath);
-			if (stat.isDirectory()) {
-				await copyDir(srcPath, destFile);
-			} else {
-				await fs.copyFile(srcPath, destFile);
-			}
-		}
-		const added = await buildFileInfo(destFile, filesPath);
-		return reply.type('application/json').send({
-			added: [added], removed: cut ? [src] : []
-		});
-	}
-
-	if (cmd === 'upload') {
-		return reply.type('application/json').send({ added: [] });
-	}
-
-	return reply.type('application/json').send({ error: ['Unknown command'] });
 }
 
-type AdminApp = {
+export default async function (app: {
 	get: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
 	post: (p: string, h: (req: FastifyRequest, reply: FastifyReply) => Promise<unknown>) => void;
-};
-
-export default async function (app: AdminApp): Promise<void> {
+}): Promise<void> {
 
 	// Redirect /engine/admin to the static admin page
 	app.get('/engine/admin', async (_req: FastifyRequest, reply: FastifyReply) => {
 		return reply.redirect('/admin/admin.html');
 	});
 
-	// elFinder connector
+	// elFinder connector via elfinder-node driver registry
 	app.get('/engine/elfinder', handleElfinder);
 	app.post('/engine/elfinder', handleElfinder);
 }

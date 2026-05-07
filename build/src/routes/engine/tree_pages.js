@@ -46,7 +46,17 @@ export default async function (app) {
         const action = String(body.action || '');
         const leaf = String(body.leaf || '');
         const pageName = String(body.path || '');
-        const data = body.data;
+        let rawData = body.data;
+        if (typeof rawData === 'string') {
+            try {
+                rawData = JSON.parse(rawData);
+            }
+            catch { /* leave as-is */ }
+        }
+        const data = (typeof rawData === 'object' && rawData !== null)
+            ? rawData
+            : undefined;
+        req.log.debug({ action, leaf, pageName }, 'tree POST request');
         const engineRequest = new EngineRequest({
             body: req.body
         });

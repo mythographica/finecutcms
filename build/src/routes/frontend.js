@@ -3,6 +3,7 @@
  * Mnemonica chain: RequestData → RouteData → PageData → RenderData → ResponseData
  */
 import path from 'path';
+import { promises as fs } from 'fs';
 import '../core/collections/requestTypes.js';
 import { lookupTyped } from 'mnemonica';
 import { checkStaticCache } from '../plugins/static-cache.js';
@@ -13,6 +14,22 @@ import '../lib/registerHelpers.js';
 import { settings } from '../core/settings.js';
 const RequestData = lookupTyped('RequestData');
 const ROOT = process.cwd();
+const PUBLIC_DIR = path.join(ROOT, 'public');
+const mimeTypes = {
+    '.css': 'text/css',
+    '.js': 'application/javascript',
+    '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.jpg': 'image/jpeg',
+    '.svg': 'image/svg+xml',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.eot': 'application/vnd.ms-fontobject',
+    '.ico': 'image/x-icon',
+    '.html': 'text/html',
+    '.txt': 'text/plain'
+};
 function parseUrl(url) {
     let uri = decodeURIComponent(url);
     uri = uri.replace(/index\.(php|htm|html)/g, '');
@@ -22,6 +39,20 @@ function parseUrl(url) {
 }
 export default async function (app) {
     app.get('/*', async (req, reply) => {
+        // Serve static files from public/ if they exist
+        const staticPath = path.join(PUBLIC_DIR, req.url);
+        try {
+            const stat = await fs.stat(staticPath);
+            if (stat.isFile()) {
+                const ext = path.extname(staticPath);
+                const contentType = mimeTypes[ext] || 'application/octet-stream';
+                const data = await fs.readFile(staticPath);
+                return reply.type(contentType).send(data);
+            }
+        }
+        catch {
+            // not a file, fall through to page rendering
+        }
         let pagePath = '';
         try {
             const requestData = new RequestData({

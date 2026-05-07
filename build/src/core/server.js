@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import fastifyFormbody from '@fastify/formbody';
 import path from 'path';
+import { promises as fs } from 'fs';
 import { lookupTyped } from 'mnemonica';
 import { RouteData, PageData, RenderData, ResponseData } from './collections/requestTypes.js';
 import { EngineRequest, TreeResult, PageResult, CacheResult, TemplateResult } from './collections/engineTypes.js';
@@ -18,10 +19,46 @@ const app = Fastify({
 });
 // Parse form-encoded bodies (jQuery $.ajax default)
 await app.register(fastifyFormbody);
-// Serve static files (admin panel assets) at /admin prefix
+// Serve static files for admin panel at /admin prefix
 await app.register(fastifyStatic, {
     root: path.join(process.cwd(), 'public'),
     prefix: '/admin'
+});
+// Serve elFinder 2.1 assets directly from node_modules
+const elfinderDir = path.join(process.cwd(), 'node_modules', 'elfinder-npm');
+app.get('/elfinder/*', async (req, reply) => {
+    const wildcard = req.params['*'] || '';
+    const filePath = path.join(elfinderDir, wildcard);
+    // Prevent directory traversal
+    if (!filePath.startsWith(elfinderDir)) {
+        return reply.code(403).send('Forbidden');
+    }
+    try {
+        const stat = await fs.stat(filePath);
+        if (stat.isDirectory()) {
+            return reply.code(404).send('Not found');
+        }
+        const ext = path.extname(filePath);
+        const mimeTypes = {
+            '.css': 'text/css',
+            '.js': 'application/javascript',
+            '.png': 'image/png',
+            '.gif': 'image/gif',
+            '.jpg': 'image/jpeg',
+            '.svg': 'image/svg+xml',
+            '.woff': 'font/woff',
+            '.woff2': 'font/woff2',
+            '.ttf': 'font/ttf',
+            '.eot': 'application/vnd.ms-fontobject',
+            '.mp3': 'audio/mpeg'
+        };
+        const contentType = mimeTypes[ext] || 'application/octet-stream';
+        const data = await fs.readFile(filePath);
+        return reply.type(contentType).send(data);
+    }
+    catch {
+        return reply.code(404).send('Not found');
+    }
 });
 // Wire up mnemonica collection hooks to Pino (default collection)
 setupCollectionLogging(defaultTypes, logger);

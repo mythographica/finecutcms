@@ -3,6 +3,7 @@
  * Mnemonica chain: RequestData → RouteData → PageData → RenderData → ResponseData
  */
 import path from 'path';
+import { promises as fs } from 'fs';
 import type { FastifyRequest, FastifyReply } from 'fastify';
 import '../core/collections/requestTypes.js';
 import { lookupTyped } from 'mnemonica';
@@ -19,6 +20,23 @@ import type { TemplateContext } from '../types/index.js';
 const RequestData = lookupTyped('RequestData');
 
 const ROOT = process.cwd();
+const PUBLIC_DIR = path.join(ROOT, 'public');
+
+const mimeTypes: Record<string, string> = {
+	'.css': 'text/css',
+	'.js': 'application/javascript',
+	'.png': 'image/png',
+	'.gif': 'image/gif',
+	'.jpg': 'image/jpeg',
+	'.svg': 'image/svg+xml',
+	'.woff': 'font/woff',
+	'.woff2': 'font/woff2',
+	'.ttf': 'font/ttf',
+	'.eot': 'application/vnd.ms-fontobject',
+	'.ico': 'image/x-icon',
+	'.html': 'text/html',
+	'.txt': 'text/plain'
+};
 
 function parseUrl (url: string): string {
 	let uri = decodeURIComponent(url);
@@ -38,6 +56,20 @@ type AppGet = {
 export default async function (app: AppGet): Promise<void> {
 
 	app.get('/*', async (req: FastifyRequest, reply: FastifyReply) => {
+		// Serve static files from public/ if they exist
+		const staticPath = path.join(PUBLIC_DIR, req.url);
+		try {
+			const stat = await fs.stat(staticPath);
+			if (stat.isFile()) {
+				const ext = path.extname(staticPath);
+				const contentType = mimeTypes[ext] || 'application/octet-stream';
+				const data = await fs.readFile(staticPath);
+				return reply.type(contentType).send(data);
+			}
+		} catch {
+			// not a file, fall through to page rendering
+		}
+
 		let pagePath = '';
 
 		try {

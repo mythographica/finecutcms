@@ -34,7 +34,14 @@ export default async function (app: App): Promise<void> {
 		const action = String(body.action || '');
 		const leaf = String(body.leaf || '');
 		const pathName = String(body.path || '');
-		const data = body.data as Record<string, unknown> | undefined;
+		let rawData = body.data;
+		if (typeof rawData === 'string') {
+			try { rawData = JSON.parse(rawData) as Record<string, unknown>; }
+			catch { /* leave as-is */ }
+		}
+		const data = (typeof rawData === 'object' && rawData !== null)
+			? rawData as Record<string, unknown>
+			: undefined;
 
 		const engineRequest = new EngineRequest({
 			body: req.body as Record<string, unknown>
@@ -83,7 +90,18 @@ export default async function (app: App): Promise<void> {
 		if (action === 'settings') {
 			const dataVal = String(body.data || '');
 			if (dataVal) {
-				await fs.writeFile(SETTINGS_PATH, dataVal, 'utf-8');
+				// Frontend wraps settings in {val: ...} — unwrap before storing
+				let storeVal = dataVal;
+				try {
+					const parsed = JSON.parse(dataVal) as Record<string, unknown>;
+					if (parsed.val !== undefined) {
+						storeVal = String(parsed.val);
+					}
+				} catch { /* not wrapped, store as-is */ }
+				// Only write when value is non-empty (matches PHP behavior)
+				if (storeVal !== '') {
+					await fs.writeFile(SETTINGS_PATH, storeVal, 'utf-8');
+				}
 			}
 			const current = await fs.readFile(SETTINGS_PATH, 'utf-8');
 			return reply.type('text/plain').send(current);

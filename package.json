@@ -6,7 +6,7 @@
 	"type": "module",
 	"scripts": {
 		"start": "node build/src/core/server.js",
-		"dev": "node --watch build/src/core/server.js",
+		"dev": "node --watch build/src/core/server.js 2>&1 | tee -a server.log",
 		"build": "tsc",
 		"build:watch": "tsc --watch",
 		"test": "vitest run",
@@ -17,6 +17,7 @@
 	"dependencies": {
 		"@fastify/formbody": "^8.0.2",
 		"@fastify/static": "^9.1.3",
+		"elfinder-node": "^2.1.1",
 		"elfinder-npm": "^2.1.28",
 		"fastify": "^5.0.0",
 		"mnemonica": "file:../core",

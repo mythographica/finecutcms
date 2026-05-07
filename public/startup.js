@@ -121,7 +121,9 @@
 							, dataType : 'text'
 							, url: ServerPaths.pages
 							, success: function( data ){ if( data !== ''){ cb( data ); } }
-							, error: function(data){ alert(data); }
+							, error: function(_jqXHR, _textStatus, errorThrown){
+							alert(errorThrown || 'Server error');
+						}
 						} ) ;
 					}
 				}catch(e){ alert(e); }

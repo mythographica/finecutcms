@@ -11,18 +11,35 @@ export async function getPage(pagePath) {
         getfiles('info.txt', pagePath),
         getfiles('blocks.txt', pagePath)
     ]);
+    // Defensive: handle double-encoded blocks from legacy corruption
+    let blocksContent = blocks || '[]';
+    if (blocksContent.startsWith('"') && blocksContent.endsWith('"')) {
+        try {
+            blocksContent = JSON.parse(blocksContent);
+        }
+        catch {
+            blocksContent = '[]';
+        }
+    }
     return {
         header: header || '{}',
         content: content || '',
         info: info || '',
-        blocks: blocks || '[]',
-        path: pagePath
+        blocks: blocksContent
     };
 }
 export async function setPage(pagePath, data) {
-    let header = data.header;
+    let rawHeader = data.header;
+    if (typeof rawHeader === 'string') {
+        rawHeader = JSON.parse(rawHeader);
+    }
+    let header = rawHeader;
     const content = data.content || '';
-    const blocks = data.blocks;
+    let rawBlocks = data.blocks;
+    if (typeof rawBlocks === 'string') {
+        rawBlocks = JSON.parse(rawBlocks);
+    }
+    const blocks = rawBlocks;
     let infoContent = data.info || '';
     const isEmpty = !infoContent;
     const ROOT = process.cwd();

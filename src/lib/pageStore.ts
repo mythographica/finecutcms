@@ -11,7 +11,6 @@ export type rawPageFiles = {
 	content : string;
 	info    : string;
 	blocks  : string;
-	path    : string;
 };
 
 export async function getPage (pagePath: string): Promise<rawPageFiles> {
@@ -22,21 +21,37 @@ export async function getPage (pagePath: string): Promise<rawPageFiles> {
 		getfiles('blocks.txt', pagePath)
 	]);
 
+	// Defensive: handle double-encoded blocks from legacy corruption
+	let blocksContent = blocks || '[]';
+	if (blocksContent.startsWith('"') && blocksContent.endsWith('"')) {
+		try { blocksContent = JSON.parse(blocksContent) as string; }
+		catch { blocksContent = '[]'; }
+	}
+
 	return {
 		header : header || '{}',
 		content: content || '',
 		info   : info || '',
-		blocks : blocks || '[]',
-		path   : pagePath
+		blocks : blocksContent
 	};
 }
 
 export async function setPage (
 	pagePath: string, data: Record<string, unknown>
 ): Promise<rawPageFiles> {
-	let header = data.header as PageHeader | undefined;
+	let rawHeader = data.header;
+	if (typeof rawHeader === 'string') {
+		rawHeader = JSON.parse(rawHeader) as PageHeader;
+	}
+	let header = rawHeader as PageHeader | undefined;
+
 	const content = (data.content as string) || '';
-	const blocks = data.blocks as Array<{ name: string; value: string }> | undefined;
+
+	let rawBlocks = data.blocks;
+	if (typeof rawBlocks === 'string') {
+		rawBlocks = JSON.parse(rawBlocks) as Array<{ name: string; value: string }>;
+	}
+	const blocks = rawBlocks as Array<{ name: string; value: string }> | undefined;
 
 	let infoContent = (data.info as string) || '';
 	const isEmpty = !infoContent;
