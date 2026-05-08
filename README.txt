@@ -1,38 +1,72 @@
 
-Directory Structure Definition
+FineCut CMS — Node.js Edition
+==============================
 
-* bin
--- some command line utils
+A lightweight, file-based CMS with no database. Originally written in PHP
+16 years ago, now rebuilt on Node.js + Fastify + TypeScript + mnemonica.
 
-* core
--- system core modules
+Architecture
+------------
 
-* data
--- all data, pages and so on
+Every HTTP request flows through a mnemonica prototype chain:
 
-* i18n
--- localization strings json files
+    RequestData → RouteData → PageData → RenderData → ResponseData
 
-* lib
--- libs, used for project
+Each step enriches the request context. Hooks provide cross-cutting
+observability (logging, caching, validation, metrics) with zero business
+logic in route handlers.
 
-* log
--- all log files which project writes
+Directory Structure
+-------------------
 
-* modules
--- some stuff, which routes can use
+    bin/         CLI utilities (cache clear, etc.)
+    core/        Server bootstrap, settings, mnemonica collections
+    data/        Pages, menus, settings, static cache
+    lib/         File utils, template engine, components
+    log/         Pino log output
+    plugins/     Pino logger, static cache
+    public/      Static assets (stylesheets, javascripts, files/)
+    routes/      Frontend catch-all, engine API routes
+    test/        Unit and integration tests (Vitest)
+    views/       Template engine + template directories
 
-* plugins
--- middleware stuff
+Page Storage
+------------
 
-* public
--- static files and so on
+Each page is a directory under data/pages/ containing:
 
-* routes
--- all project routes descriptions
+    header.txt   JSON metadata (title, template, keywords, ...)
+    content.txt  Page body
+    info.txt     Additional metadata
+    blocks.txt   JSON array of named blocks
 
-* services
--- some services, which can run beside
+Admin Panel
+-----------
 
-* views
--- all that project renders to front-end
+Available at /admin:
+
+    Pages Manager    Tree CRUD, content/settings/blocks editor
+    Templates        Template CRUD with ACE editor
+    File Manager     elFinder 2.1 integration
+    Settings         Cache clear, engine config
+
+Development
+-----------
+
+    npm install          Install dependencies
+    npm run build        Compile TypeScript
+    npm run dev          Start with Node.js --watch
+    npm start            Production start
+    npm test             Run Vitest suite
+    npm run tactica      Regenerate .tactica/ types
+
+Requirements
+------------
+
+    Node.js 20+ (LTS recommended)
+    Modern browser for admin panel
+
+License
+-------
+
+MIT or GPL. See /about/license/ for details.

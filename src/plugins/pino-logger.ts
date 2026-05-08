@@ -8,6 +8,17 @@ import pino from 'pino';
 import type { TypesCollection, hooksOpts } from 'mnemonica';
 import { traceChain, formatChainTrace, getRequestId } from '../lib/chainTrace.js';
 
+// Common shape of mnemonica instances accessed in hooks
+// Structural typing means any instance with these optional props matches
+type HookInstance = {
+	requestId?: string;
+	fromCache?: boolean;
+	statusCode?: number;
+	pagePath?: string;
+	body?: string;
+	parse?: () => Record<string, unknown>;
+};
+
 export function createLogger () {
 	return pino({
 		level : process.env.LOG_LEVEL || 'info',
@@ -22,9 +33,8 @@ export function setupCollectionLogging (collection: TypesCollection, log: Return
 	// Track timing per request for performance metrics
 	const timings = new Map<string, number>();
 
-	collection.registerHook('preCreation', (hookData: hooksOpts) => {
-		const existentInstance = hookData.existentInstance as Record<string, unknown> | undefined;
-		const requestId = existentInstance?.requestId as string | undefined;
+	collection.registerHook('preCreation', (hookData: hooksOpts<HookInstance>) => {
+		const requestId = hookData.existentInstance.requestId;
 
 		if (requestId && hookData.TypeName === 'RequestData') {
 			timings.set(requestId, performance.now());
@@ -40,9 +50,8 @@ export function setupCollectionLogging (collection: TypesCollection, log: Return
 		}, 'starting transformation');
 	});
 
-	collection.registerHook('postCreation', (hookData: hooksOpts) => {
-		const inheritedInstance = hookData.inheritedInstance as Record<string, unknown>;
-		const requestId = inheritedInstance.requestId as string | undefined;
+	collection.registerHook('postCreation', (hookData: hooksOpts<HookInstance>) => {
+		const requestId = hookData.inheritedInstance?.requestId;
 
 		if (requestId && hookData.TypeName === 'ResponseData') {
 			const start = timings.get(requestId);
@@ -64,7 +73,7 @@ export function setupCollectionLogging (collection: TypesCollection, log: Return
 		}
 	});
 
-	collection.registerHook('creationError', (hookData: hooksOpts) => {
+	collection.registerHook('creationError', (hookData: hooksOpts<HookInstance>) => {
 		const existentInstance = hookData.existentInstance;
 		const inheritedInstance = hookData.inheritedInstance;
 
@@ -84,8 +93,7 @@ export function setupCollectionLogging (collection: TypesCollection, log: Return
 		// parse() returns { name, props, joint, parent, self }
 		let instanceParse: Record<string, unknown> | undefined;
 		try {
-			const instance = existentInstance as Record<string, unknown>;
-			const parseFn = instance.parse as (() => Record<string, unknown>) | undefined;
+			const parseFn = existentInstance.parse;
 			if (parseFn) {
 				instanceParse = parseFn();
 			}

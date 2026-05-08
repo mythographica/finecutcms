@@ -12,7 +12,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"cache:clear": "node bin/cache-clear.js",
-		"tactica": "npx tactica --esm --verbose"
+		"tactica": "npx tactica --esm --verbose",
+		"rmstatic": "rm -rf /code/mnemonica/finecutnode/data/static/*"
 	},
 	"dependencies": {
 		"@fastify/formbody": "^8.0.2",

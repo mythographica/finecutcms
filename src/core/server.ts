@@ -7,6 +7,7 @@ import fastifyFormbody from '@fastify/formbody';
 import path from 'path';
 import { promises as fs } from 'fs';
 import { lookupTyped } from 'mnemonica';
+import type { hooksOpts } from 'mnemonica';
 import {
 	RouteData, PageData, RenderData, ResponseData
 } from './collections/requestTypes.js';
@@ -16,6 +17,14 @@ import {
 import { defaultTypes } from 'mnemonica';
 import { createLogger, setupCollectionLogging } from '../plugins/pino-logger.js';
 import { writeStaticCache } from '../plugins/static-cache.js';
+
+// Instance shape accessed by the static-cache postCreation hook
+type ResponseLike = {
+	fromCache?: boolean;
+	statusCode?: number;
+	pagePath?: string;
+	body?: string;
+};
 
 const logger = createLogger();
 
@@ -85,13 +94,13 @@ defaultTypes.registerHook('preCreation', (hookData) => {
 });
 
 // Wire up static cache write hook — automatically cache successful responses
-defaultTypes.registerHook('postCreation', (hookData) => {
+defaultTypes.registerHook('postCreation', (hookData: hooksOpts<ResponseLike>) => {
 	if (hookData.TypeName === 'ResponseData') {
-		const instance = hookData.inheritedInstance as Record<string, unknown>;
-		const fromCache = instance.fromCache as boolean;
-		const statusCode = instance.statusCode as number;
-		if (!fromCache && statusCode === 200) {
-			writeStaticCache(instance.pagePath as string, instance.body as string).catch((err: Error) => {
+		const instance = hookData.inheritedInstance;
+		const fromCache = instance?.fromCache;
+		const statusCode = instance?.statusCode;
+		if (instance && !fromCache && statusCode === 200) {
+			writeStaticCache(instance.pagePath || '', instance.body || '').catch((err: Error) => {
 				logger.error({ err: err.message }, 'static cache write failed');
 			});
 		}

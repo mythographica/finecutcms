@@ -60,7 +60,7 @@ export default async function (app: App): Promise<void> {
 		try {
 			const result = await handleContentGet(leaf);
 			return reply.type('application/json').send(result);
-		} catch (err) {
+		} catch {
 			reply.code(404);
 			return reply.type('application/json').send({ error: 'Page not found' });
 		}
@@ -109,7 +109,7 @@ export default async function (app: App): Promise<void> {
 			try {
 				const result = await handleSet(leaf, pageName, data);
 				return reply.type('application/json').send(result);
-			} catch (err) {
+			} catch {
 				reply.code(409);
 				return reply.type('application/json').send({ error: 'Page already exists' });
 			}
@@ -129,7 +129,7 @@ export default async function (app: App): Promise<void> {
 			try {
 				const result = await handleContentGet(leaf);
 				return reply.type('application/json').send(result);
-			} catch (err) {
+			} catch {
 				reply.code(404);
 				return reply.type('application/json').send({ error: 'Page not found' });
 			}

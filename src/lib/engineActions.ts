@@ -15,7 +15,10 @@ export async function handleContentGet (leaf: string): Promise<{ page: rawPageFi
 	return { page, status: true };
 }
 
-export async function handleContentSet (leaf: string, data: Record<string, unknown>): Promise<{ page: rawPageFiles; status: true }> {
+export async function handleContentSet (
+	leaf: string,
+	data: Record<string, unknown>
+): Promise<{ page: rawPageFiles; status: true }> {
 	const target = resolvePaths(leaf);
 	const page = await setPage(target, data);
 	return { page, status: true };
