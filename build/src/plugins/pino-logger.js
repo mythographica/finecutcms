@@ -18,8 +18,7 @@ export function setupCollectionLogging(collection, log) {
     // Track timing per request for performance metrics
     const timings = new Map();
     collection.registerHook('preCreation', (hookData) => {
-        const existentInstance = hookData.existentInstance;
-        const requestId = existentInstance?.requestId;
+        const requestId = hookData.existentInstance.requestId;
         if (requestId && hookData.TypeName === 'RequestData') {
             timings.set(requestId, performance.now());
         }
@@ -33,8 +32,7 @@ export function setupCollectionLogging(collection, log) {
         }, 'starting transformation');
     });
     collection.registerHook('postCreation', (hookData) => {
-        const inheritedInstance = hookData.inheritedInstance;
-        const requestId = inheritedInstance.requestId;
+        const requestId = hookData.inheritedInstance?.requestId;
         if (requestId && hookData.TypeName === 'ResponseData') {
             const start = timings.get(requestId);
             const duration = start ? performance.now() - start : undefined;
@@ -71,8 +69,7 @@ export function setupCollectionLogging(collection, log) {
         // parse() returns { name, props, joint, parent, self }
         let instanceParse;
         try {
-            const instance = existentInstance;
-            const parseFn = instance.parse;
+            const parseFn = existentInstance.parse;
             if (parseFn) {
                 instanceParse = parseFn();
             }

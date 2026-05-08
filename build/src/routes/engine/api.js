@@ -42,7 +42,7 @@ export default async function (app) {
                 const result = await handleContentGet(leaf);
                 return reply.type('application/json').send(result);
             }
-            catch (err) {
+            catch {
                 reply.code(404);
                 return reply.type('application/json').send({ error: 'Page not found' });
             }
@@ -60,7 +60,7 @@ export default async function (app) {
                 const result = await handleSet(leaf, pathName, data);
                 return reply.type('application/json').send(result);
             }
-            catch (err) {
+            catch {
                 reply.code(409);
                 return reply.type('application/json').send({ error: 'Page already exists' });
             }

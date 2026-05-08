@@ -76,10 +76,10 @@ defaultTypes.registerHook('preCreation', (hookData) => {
 defaultTypes.registerHook('postCreation', (hookData) => {
     if (hookData.TypeName === 'ResponseData') {
         const instance = hookData.inheritedInstance;
-        const fromCache = instance.fromCache;
-        const statusCode = instance.statusCode;
-        if (!fromCache && statusCode === 200) {
-            writeStaticCache(instance.pagePath, instance.body).catch((err) => {
+        const fromCache = instance?.fromCache;
+        const statusCode = instance?.statusCode;
+        if (instance && !fromCache && statusCode === 200) {
+            writeStaticCache(instance.pagePath || '', instance.body || '').catch((err) => {
                 logger.error({ err: err.message }, 'static cache write failed');
             });
         }

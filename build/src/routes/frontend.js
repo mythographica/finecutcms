@@ -54,6 +54,7 @@ export default async function (app) {
             // not a file, fall through to page rendering
         }
         let pagePath = '';
+        let chainInstance;
         try {
             const requestData = new RequestData({
                 method: req.method,
@@ -64,6 +65,7 @@ export default async function (app) {
                 headers: req.headers,
                 id: req.id
             });
+            chainInstance = requestData;
             pagePath = parseUrl(req.url);
             let isMain = false;
             if (pagePath === '/' || pagePath === '') {
@@ -80,8 +82,10 @@ export default async function (app) {
                 isMain,
                 deep: ''
             });
+            chainInstance = routeData;
             const pageFiles = await loadPageFiles(fullPagePath);
             const pageData = new routeData.PageData(pageFiles);
+            chainInstance = pageData;
             // Check static cache before rendering
             const cached = await checkStaticCache(pagePath, pageFiles.header);
             if (cached) {
@@ -106,6 +110,7 @@ export default async function (app) {
                 menuLeft: await menuLeft(pageData)
             };
             const renderData = new pageData.RenderData(components);
+            chainInstance = renderData;
             const templatePath = path.join(ROOT, 'views', 'templates', renderData.template || 'default', 'index.html');
             const context = {
                 header: renderData.header,
@@ -125,6 +130,7 @@ export default async function (app) {
                 statusCode: 200,
                 fromCache: false
             });
+            chainInstance = responseData;
             return reply
                 .type(responseData.contentType)
                 .code(responseData.statusCode)
@@ -133,9 +139,22 @@ export default async function (app) {
         catch (err) {
             const error = err;
             req.log.error({ err: error.message, pagePath }, 'request failed');
+            let displayError = error;
+            if (chainInstance) {
+                try {
+                    const instance = chainInstance;
+                    const exceptionCtor = instance.exception;
+                    if (exceptionCtor) {
+                        displayError = new exceptionCtor(error);
+                    }
+                }
+                catch {
+                    // fallback to plain error
+                }
+            }
             reply.code(500);
             return reply.type('text/html').send(`<h1>500 Internal Server Error</h1>` +
-                `<pre>${error.message}</pre>`);
+                `<pre>${displayError.message}</pre>`);
         }
     });
 }

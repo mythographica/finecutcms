@@ -45,6 +45,9 @@ export async function contentParser (ctx: PageContext): Promise<string> {
 		content = content.replace(/src="\//g, `src="${ctx.deep}/`);
 		content = content.replace(/src = "\//g, `src = "${ctx.deep}/`);
 	}
+	// Escape template delimiters so examples like {{var}} render literally
+	// without being processed by the template engine
+	content = content.replace(/\{\{/g, '&#123;&#123;').replace(/\}\}/g, '&#125;&#125;');
 	return content;
 }
 
